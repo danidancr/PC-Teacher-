@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PC Teacher - Recuperar Senha</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        /* CSS INLINE PARA CONSISTÊNCIA COM AS TELAS SIMPLIFICADAS */
+        :root {
+            --color-primary-dark: #1F192F; /* Fundo dos Cursos e Áreas Escuras */
+            --color-primary-light: #FFFFFF; /* Fundo Geral Claro */
+            --color-accent-blue: #1F192F; /* Cor do botão primário (pode ser ajustada) */
+            --color-blue: #2D6073 ;
+            --color-text-dark: #000000;
+            --color-text-light: #ffffff;
+            --font-family: 'Poppins', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: var(--font-family);
+        }
+
+        body {
+            background-color: var(--color-blue);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .recovery-box {
+            background-color: white;
+            padding: 40px 40px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px; /* Mais compacto, já que o formulário é menor */
+            text-align: center;
+            margin: 20px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-primary-dark);
+            text-decoration: none;
+            margin-bottom: 25px;
+        }
+
+        .logo-icon {
+            color: var(--color-logo-icon);
+            font-size: 1.8rem; 
+            margin-right: 8px;
+        }
+
+        h2 {
+            font-size: 1.6rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--color-primary-dark);
+        }
+        
+        .instruction-text {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--color-text-dark);
+            font-size: 0.95rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            border-color: var(--color-primary-dark);
+            outline: none;
+            box-shadow: 0 0 0 1px var(--color-primary-dark);
+        }
+
+        /* Botão Principal de Envio */
+        .btn-primary-send {
+            width: 100%;
+            padding: 12px; 
+            background-color: var(--color-primary-dark); 
+            color: var(--color-text-light);
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-primary-send:hover {
+            opacity: 0.9;
+        }
+        
+        /* Link para Voltar ao Login */
+        .back-to-login {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 0.9rem;
+        }
+
+        .back-to-login a {
+            color: var(--color-primary-dark);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .back-to-login a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsividade em Mobile */
+        @media (max-width: 450px) {
+            .recovery-box {
+                padding: 30px 25px;
+                box-shadow: none; 
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="recovery-box">
+
+        <h2>Recuperar Senha</h2>
+        <p class="instruction-text">Digite seu e-mail para receber as instruções de redefinição.</p>
+        
+        <form id="recovery-form">
+            
+            <div class="input-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" required placeholder="seu.email@exemplo.com">
+            </div>
+            
+            <button type="submit" class="btn-primary-send">Enviar Instruções</button>
+            
+            <div class="back-to-login">
+                <a href="login.html">Lembrei minha senha, voltar ao Login</a>
+            </div>
+            
+        </form>
+        
+    </div>
+
+    <script>
+        document.getElementById('recovery-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const emailInput = document.getElementById('email');
+            const emailValue = emailInput.value;
+            
+            const instructionText = document.querySelector('.instruction-text');
+            const form = document.getElementById('recovery-form');
+
+            // 1. Oculta o formulário (ou desabilita)
+            form.innerHTML = '';
+            
+            // 2. Exibe a mensagem de sucesso
+            instructionText.innerHTML = `
+                <i class="fas fa-check-circle" style="color: var(--color-logo-icon); font-size: 2.5rem; margin-bottom: 15px;"></i>
+                <p style="font-weight: 600; color: var(--color-primary-dark); margin-bottom: 15px;">E-mail Enviado!</p>
+                <p>Verifique a caixa de entrada de <strong>${emailValue}</strong> para redefinir sua senha.</p>
+                <p style="margin-top: 20px;">Se não encontrar, verifique a pasta de spam.</p>
+            `;
+
+            // 3. Adiciona link de volta ao login
+            const backLink = document.querySelector('.back-to-login');
+            backLink.innerHTML = `<a href="login.html">Voltar para o Login</a>`;
+        });
+    </script>
+</body>
+</html>

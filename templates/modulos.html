@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PC Teacher - Dashboard</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <link rel="stylesheet" href="assets/css/modulos.css"> 
+</head>
+<body>
+
+    <div class="dashboard-layout">
+        
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/img/logo-black.png" alt="Professores ensinando"> 
+                <span class="title">PC Teacher</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="perfil.html" class="sidebar-item">
+                    <i class="fas fa-user-circle"></i> Meu Perfil
+                </a>
+                <a href="modulos.html" class="sidebar-item active">
+                    <i class="fas fa-book"></i> Módulos
+                </a>
+                <a href="progresso.html" class="sidebar-item">
+                    <i class="fas fa-chart-line"></i> Meu Progresso
+                </a>
+                <a href="certificado.html" class="sidebar-item">
+                    <i class="fas fa-certificate"></i> Certificado
+                </a>
+            </nav>
+            
+            <a href="index.html" class="sidebar-footer">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <h1>Pensamento Computacional - Módulos</h1>
+
+            <div class="course-card">
+                <div class="course-info">
+                    <h2>Decomposição</h2>
+                    <p>É a habilidade de quebrar grandes problemas em partes menores e mais simples, tornando a solução mais fácil e eficiente.</p>
+                </div>
+                
+                <div class="course-progress">
+                    <p class="progress-status">Iniciar</p>
+                    <a href="conteudo-decomposicao.html" class="btn-continue">começar</a>
+                </div>
+            </div>
+
+            <div class="course-card">
+                <div class="course-info">
+                    <h2>Reconhecimento de Padrões</h2>
+                    <p>É a identificação de semelhanças e repetições em problemas, o que economiza tempo e permite a reutilização de soluções.</p>
+                </div>
+                 
+                <div class="course-progress">
+                    <i class="fas fa-lock uncompleted"></i> 
+                    <p class="progress-status" style="color: #666;">Bloqueado</p>
+                    <a href="#" class="btn-continue">Bloqueado</a>
+                </div>
+            </div>
+
+            <div class="course-card">
+                <div class="course-info">
+                    <h2>Abstração</h2>
+                    <p>Você aprende a focar nas informações importantes, ignorando detalhes irrelevantes para facilitar a criação de modelos e representações.</p>
+                </div>
+                 
+                <div class="course-progress">
+                    <i class="fas fa-lock uncompleted"></i> 
+                    <p class="progress-status" style="color: #666;">Bloqueado</p>
+                    <a href="#" class="btn-continue">Bloqueado</a>
+                </div>
+            </div>
+
+            <div class="course-card">
+                <div class="course-info">
+                    <h2>Algoritmos</h2>
+                    <p>São as sequências de passos lógicos e organizados que permitem resolver problemas ou executar uma tarefa, de forma estruturada e replicável.</p>
+                </div>
+                 
+                <div class="course-progress">
+                    <i class="fas fa-lock uncompleted"></i> 
+                    <p class="progress-status" style="color: #666;">Bloqueado</p>
+                    <a href="#" class="btn-continue">Bloqueado</a>
+                </div>
+            </div>
+
+        </main>
+    </div>
+    
+</body>
+</html>

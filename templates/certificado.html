@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PC Teacher - Certificado</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <link rel="stylesheet" href="assets/css/certificado.css"> 
+</head>
+<body>
+
+    <div class="dashboard-layout">
+        
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/img/logo-black.png" alt="Professores ensinando"> 
+                <span class="title">PC Teacher</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="perfil.html" class="sidebar-item">
+                    <i class="fas fa-user-circle"></i> Meu Perfil
+                </a>
+                <a href="modulos.html" class="sidebar-item">
+                    <i class="fas fa-book"></i> Módulos
+                </a>
+                <a href="progresso.html" class="sidebar-item">
+                    <i class="fas fa-chart-line"></i> Meu Progresso
+                </a>
+                <a href="certificado.html" class="sidebar-item active">
+                    <i class="fas fa-certificate"></i> Certificado
+                </a>
+            </nav>
+            
+            <a href="index.html" class="sidebar-footer">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <h1>Certificados de Conclusão</h1>
+
+            <div class="certificate-status-card available">
+                <div class="certificate-icon">
+                    <i class="fas fa-award"></i>
+                </div>
+                <h2>Curso: Pensamento Computacional</h2>
+                <p>Parabéns! Você concluiu todos os módulos e exercícios. Seu certificado está pronto para download.</p>
+                
+                <a href="#" class="btn-download-cert">
+                    <i class="fas fa-download"></i> Baixar Certificado (PDF)
+                </a>
+            </div>
+
+            <div class="certificate-preview">
+                <h3>Pré-visualização do Certificado</h3>
+                <div class="certificate-placeholder">
+                    [Design Gráfico do Certificado Concluído]
+                </div>
+                <p style="font-size: 0.9rem; color: #999;">O certificado será gerado com o seu nome completo cadastrado no perfil.</p>
+            </div>
+
+            
+        </main>
+    </div>
+    
+</body>
+</html>

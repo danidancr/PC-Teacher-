@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PC Teacher - Meu Progresso</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <link rel="stylesheet" href="assets/css/progresso.css"> 
+</head>
+<body>
+
+    <div class="dashboard-layout">
+        
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/img/logo-black.png" alt="Professores ensinando"> 
+                <span class="title">PC Teacher</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="perfil.html" class="sidebar-item">
+                    <i class="fas fa-user-circle"></i> Meu Perfil
+                </a>
+                <a href="modulos.html" class="sidebar-item">
+                    <i class="fas fa-book"></i> Módulos
+                </a>
+                <a href="progresso.html" class="sidebar-item active">
+                    <i class="fas fa-chart-line"></i> Meu Progresso
+                </a>
+                <a href="certificado.html" class="sidebar-item">
+                    <i class="fas fa-certificate"></i> Certificado
+                </a>
+            </nav>
+            
+            <a href="index.html" class="sidebar-footer">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <h1>Meu Progresso Geral</h1>
+
+            <div class="progress-summary">
+                
+                <div class="metric-card main">
+                    <div class="metric-icon">
+                        <i class="fas fa-medal"></i>
+                    </div>
+                    <div class="metric-value">30%</div>
+                    <div class="metric-label">Conclusão do Curso "Pensamento Computacional"</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon" style="color: #FFC107;">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <div class="metric-value">3/12</div>
+                    <div class="metric-label">Aulas Finalizadas</div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon" style="color: #3399FF;">
+                        <i class="fas fa-puzzle-piece"></i>
+                    </div>
+                    <div class="metric-value">2/8</div>
+                    <div class="metric-label">Exercícios Concluídos</div>
+                </div>
+            </div>
+
+            <h2>Evolução por Semana</h2>
+            <div class="chart-placeholder">
+                [GRÁFICO DE BARRAS/LINHAS: Desempenho em Aulas e Exercícios]
+            </div>
+
+            <h2>Progresso Detalhado por Módulo</h2>
+            <div class="module-progress-list">
+                
+                <div class="progress-item">
+                    <div class="item-info">
+                        <h3>1. Decomposição</h3>
+                        <p>3 Aulas, 2 Exercícios</p>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: 100%;"></div>
+                    </div>
+                    <div class="progress-percentage">100%</div>
+                    <div class="status-tag status-completed">Concluído</div>
+                </div>
+
+                <div class="progress-item">
+                    <div class="item-info">
+                        <h3>2. Reconhecimento de Padrões</h3>
+                        <p>1 Aula, 0 Exercícios</p>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: 25%;"></div>
+                    </div>
+                    <div class="progress-percentage">25%</div>
+                    <div class="status-tag status-pending">Em Andamento</div>
+                </div>
+
+                <div class="progress-item">
+                    <div class="item-info">
+                        <h3>3. Abstração</h3>
+                        <p>3 Aulas, 2 Exercícios</p>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: 0%; background-color: #999;"></div>
+                    </div>
+                    <div class="progress-percentage" style="color: #999;">0%</div>
+                    <div class="status-tag status-not-started">Não Iniciado</div>
+                </div>
+
+                <div class="progress-item">
+                    <div class="item-info">
+                        <h3>4. Algoritmos</h3>
+                        <p>3 Aulas, 2 Exercícios</p>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: 0%; background-color: #999;"></div>
+                    </div>
+                    <div class="progress-percentage" style="color: #999;">0%</div>
+                    <div class="status-tag status-not-started">Não Iniciado</div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+    
+</body>
+</html>
