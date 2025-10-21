@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -6,20 +7,18 @@
     <title>Cadastro PC Teacher</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Versão atualizada do Font Awesome para melhor compatibilidade com ícones -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
     <style>
+        /* ... Seu CSS INLINE aqui ... */
         :root {
-            --color-primary-dark: #1F192F; /* Fundo dos Cursos e Áreas Escuras */
-            --color-primary-light: #FFFFFF; /* Fundo Geral Claro */
-            --color-accent-blue: #1F192F; /* Cor do botão primário (pode ser ajustada) */
-            --color-blue: #2D6073;
-            --color-logo-icon: #2D6073; /* Nova cor para o ícone */
+            --color-primary-dark: #1F192F; 
+            --color-primary-light: #FFFFFF; 
+            --color-accent-blue: #1F192F; 
+            --color-blue: #2D6073 ;
             --color-text-dark: #000000;
             --color-text-light: #ffffff;
             --font-family: 'Poppins', sans-serif;
-            --color-danger: #dc3545; /* Cor para feedback de erro */
         }
 
         * {
@@ -48,7 +47,6 @@
             margin: 20px; 
         }
 
-        /* Estrutura da Logo */
         .logo {
             display: flex;
             align-items: center;
@@ -72,11 +70,31 @@
             margin-bottom: 25px; 
             color: var(--color-primary-dark);
         }
+        
+        /* Estilos para Mensagens Flash */
+        .alert {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            font-weight: 500;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        .alert.danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .alert.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
 
         .input-group {
             margin-bottom: 12px; 
             text-align: left;
-            position: relative; 
         }
 
         .input-group label {
@@ -87,11 +105,6 @@
             font-size: 0.95rem;
         }
 
-        /* Container para campos com ícone (como senhas) */
-        .input-field-container {
-            position: relative;
-        }
-
         .input-group input {
             width: 100%;
             padding: 10px; 
@@ -99,7 +112,6 @@
             border-radius: 6px;
             font-size: 0.95rem; 
             transition: border-color 0.3s;
-            padding-right: 40px; /* Espaço para o ícone de toggle */
         }
 
         .input-group input:focus {
@@ -108,44 +120,10 @@
             box-shadow: 0 0 0 1px var(--color-primary-dark);
         }
 
-        /* Ícone de Toggle de Senha */
-        .password-toggle {
-            position: absolute;
-            top: 50%;
-            right: 12px;
-            transform: translateY(-50%);
-            cursor: pointer;
-            color: #666;
-            z-index: 10;
-            font-size: 1.1rem;
-        }
-        
-        /* Estilos para Mensagens Flash */
-        .flash-message {
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            text-align: center;
-        }
-        .flash-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .flash-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .flash-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-
-        /* Mensagem de Erro JS (validação de senha) */
-        .error-message {
-            color: var(--color-danger);
-            font-size: 0.85rem;
-            margin-top: 5px;
-            display: none; /* Escondido por padrão */
-        }
-
-
         /* Botão Principal de Cadastro */
         .btn-primary-register {
             width: 100%;
-            padding: 12px; 
+            padding: 10px; 
             background-color: var(--color-primary-dark); 
             color: var(--color-text-light);
             border: none;
@@ -154,7 +132,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: background-color 0.3s;
-            margin-top: 20px; 
+            margin-top: 15px; 
         }
 
         .btn-primary-register:hover {
@@ -166,10 +144,6 @@
             text-align: center;
             margin-top: 15px; 
             font-size: 0.9rem;
-        }
-
-        .login-link-group p {
-            margin: 0;
         }
 
         .login-link-group a {
@@ -195,55 +169,35 @@
 
     <div class="register-box">
 
-        <!-- Logo/Título com link para a home page -->
-        <a href="{{ url_for('home') }}" class="logo">
-            <i class="fa-solid fa-desktop logo-icon"></i>
-            PC Teacher
-        </a>
-
-        <!-- Mensagens do Flask (Flash Messages) -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                    <div class="alert {{ category }}">
+                        {{ message }}
+                    </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
         <h2>Cadastrar</h2>
         
-        <!-- Adicionada validação JS no evento onsubmit para checar senhas -->
-        <form action="{{ url_for('register') }}" method="POST" onsubmit="return validateForm(event);">
+        <form action="{{ url_for('cadastro') }}" method="POST">
             
             <div class="input-group">
                 <label for="name">Nome Completo</label>
-                <input type="text" id="name" name="name" required placeholder="Digite seu nome">
+                <input type="text" id="name" name="nome" required placeholder="Digite seu nome" 
+                    value="{{ request.form.get('nome', '') }}">
             </div>
             
             <div class="input-group">
                 <label for="email">E-mail</label>
-                <input type="email" id="email" name="email" required placeholder="seu.email@exemplo.com">
+                <input type="email" id="email" name="email" required placeholder="seu.email@exemplo.com" 
+                    value="{{ request.form.get('email', '') }}">
             </div>
             
-            <div class="input-group" id="password-group">
-                <label for="password">Senha (mínimo 6 caracteres)</label>
-                <div class="input-field-container">
-                    <!-- minlength adicionado para segurança básica -->
-                    <input type="password" id="password" name="password" required minlength="6" placeholder="Crie uma senha">
-                    <!-- Ícone de toggle de senha -->
-                    <i class="password-toggle fa-solid fa-eye" onclick="togglePasswordVisibility('password', this)"></i>
-                </div>
-            </div>
-
-            <div class="input-group" id="confirm-password-group">
-                <label for="confirm-password">Confirmar Senha</label>
-                <div class="input-field-container">
-                    <input type="password" id="confirm-password" name="confirm-password" required minlength="6" placeholder="Confirme sua senha">
-                    <!-- Ícone de toggle de senha -->
-                    <i class="password-toggle fa-solid fa-eye" onclick="togglePasswordVisibility('confirm-password', this)"></i>
-                </div>
-                <!-- Mensagem de erro que aparece se as senhas não coincidirem -->
-                <p id="password-match-error" class="error-message">As senhas não coincidem.</p>
+            <div class="input-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" name="senha" required placeholder="Crie uma senha">
             </div>
             
             <button type="submit" class="btn-primary-register">Criar Conta</button>
@@ -255,60 +209,6 @@
         </form>
         
     </div>
-
-    <script>
-        /**
-         * Alterna a visibilidade do campo de senha (show/hide).
-         * @param {string} inputId - O ID do campo de input.
-         * @param {HTMLElement} toggleElement - O ícone de toggle.
-         */
-        function togglePasswordVisibility(inputId, toggleElement) {
-            const passwordInput = document.getElementById(inputId);
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            
-            // Alterna o ícone (olho aberto/fechado)
-            if (type === 'password') {
-                toggleElement.classList.remove('fa-eye-slash');
-                toggleElement.classList.add('fa-eye');
-            } else {
-                toggleElement.classList.remove('fa-eye');
-                toggleElement.classList.add('fa-eye-slash');
-            }
-        }
-
-        /**
-         * Valida se as senhas coincidem antes de enviar o formulário para o servidor.
-         * @param {Event} event - O evento de submissão do formulário.
-         * @returns {boolean} - Retorna true se a validação for bem-sucedida, false caso contrário.
-         */
-        function validateForm(event) {
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirm-password').value;
-            const errorElement = document.getElementById('password-match-error');
-
-            if (password !== confirmPassword) {
-                // Previne a submissão
-                event.preventDefault(); 
-                
-                // Mostra a mensagem de erro e feedback visual
-                errorElement.style.display = 'block';
-                document.getElementById('password').style.borderColor = 'var(--color-danger)';
-                document.getElementById('confirm-password').style.borderColor = 'var(--color-danger)';
-                
-                // Foca no campo para correção
-                document.getElementById('confirm-password').focus();
-                
-                return false;
-            } else {
-                // Limpa o feedback de erro
-                errorElement.style.display = 'none';
-                document.getElementById('password').style.borderColor = '#ccc';
-                document.getElementById('confirm-password').style.borderColor = '#ccc';
-                return true;
-            }
-        }
-    </script>
 
 </body>
 </html>

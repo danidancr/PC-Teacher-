@@ -1,319 +1,672 @@
-# app.py
-from flask import Flask, render_template, request, redirect, url_for, session, abort
-from models import db, Usuario, Curso, Modulo, Aula, Progresso
+from flask import Flask, render_template, request, redirect, url_for, session, flash, Response
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+import os
+from sqlalchemy import select
+from functools import wraps
 from datetime import datetime
 
-# --- CONFIGURAÇÃO DO FLASK ---
+# =========================================================
+# 1. CONFIGURAÇÃO GERAL
+# =========================================================
 app = Flask(__name__)
-app.secret_key = 'chave_secreta_pc_teacher_123' 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+
+# Configurações de segurança e banco de dados
+# Em produção, use uma variável de ambiente REAL e longa para SECRET_KEY
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'sua_chave_secreta_padrao_muito_longa')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pcteacher.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
-db.init_app(app)
+# =========================================================
+# 2. MODELOS (Estrutura do Banco de Dados)
+# =========================================================
 
-# --- CONTEXT PROCESSOR ---
-# Garante que o usuário esteja disponível em todos os templates
-@app.context_processor
-def inject_user_info():
-    if 'logged_in' in session:
-        return {'user_name': session.get('user_name'),
-                'user_id': session.get('user_id')}
-    return {}
-
-
-# --- FUNÇÕES AUXILIARES DE BACK-END ---
-
-def verificar_acesso_aula(usuario_id, aula_id):
-    """Verifica se o usuário pode acessar a aula com base na conclusão sequencial."""
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    senha_hash = db.Column(db.String(128), nullable=False)
     
-    aula_atual = Aula.query.get(aula_id)
-    if not aula_atual:
-        return False, "Aula não encontrada."
+    # NOVAS COLUNAS PARA O PERFIL (Implementadas para a rota /perfil)
+    instituicao = db.Column(db.String(100), default='')
+    telefone = db.Column(db.String(20), default='')
+    cargo = db.Column(db.String(100), default='Professor(a)')
     
-    # Busca a aula imediatamente anterior que é sequencial
-    aula_anterior = Aula.query.filter(
-        Aula.modulo_id == aula_atual.modulo_id,
-        Aula.ordem < aula_atual.ordem,
-        Aula.sequencial == True 
-    ).order_by(Aula.ordem.desc()).first()
+    # Relação com Progresso (uselist=False significa 1:1)
+    progresso = db.relationship('Progresso', backref='usuario', lazy=True, uselist=False)
 
-    # Se existe uma aula sequencial anterior, verifica o progresso nela
-    if aula_anterior:
-        progresso_anterior = Progresso.query.filter_by(usuario_id=usuario_id, aula_id=aula_anterior.id).first()
+    def set_senha(self, senha):
+        """Armazena a senha usando hashing seguro."""
+        self.senha_hash = generate_password_hash(senha)
+
+    def check_senha(self, senha):
+        """Verifica se a senha fornecida corresponde ao hash armazenado."""
+        return check_password_hash(self.senha_hash, senha)
+    
+    def __repr__(self):
+        return f'<Usuario {self.nome}>'
+
+class Progresso(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), unique=True, nullable=False)
+    
+    # Colunas de progresso COMPLETADAS:
+    introducao_concluido = db.Column(db.Boolean, default=False)
+    decomposicao_concluido = db.Column(db.Boolean, default=False)
+    reconhecimento_padroes_concluido = db.Column(db.Boolean, default=False)
+    abstracao_concluido = db.Column(db.Boolean, default=False)
+    algoritmo_concluido = db.Column(db.Boolean, default=False)
+    projeto_final_concluido = db.Column(db.Boolean, default=False)
+    
+    def __repr__(self):
+        return f'<Progresso Usuario: {self.usuario_id}>'
+
+# =========================================================
+# 3. HELPERS E DECORATORS
+# =========================================================
+
+# --- CONFIGURAÇÃO ESTÁTICA DOS MÓDULOS ---
+# Usamos esta lista para gerar os dados dinâmicos
+MODULO_CONFIG = [
+    {
+        'title': '1. Introdução ao Pensamento Computacional',
+        'field': 'introducao_concluido',
+        'slug': 'introducao',
+        'order': 1,
+        'description': 'Entenda o que é o Pensamento Computacional, seus pilares e por que ele é crucial para o futuro.',
+        'lessons': 2, 'exercises': 1, 'dependency_field': None
+    },
+    {
+        'title': '2. Decomposição',
+        'field': 'decomposicao_concluido',
+        'slug': 'decomposicao',
+        'order': 2,
+        'description': 'Aprenda a quebrar problemas complexos em partes menores e gerenciáveis.',
+        'lessons': 2, 'exercises': 1, 'dependency_field': 'introducao_concluido'
+    },
+    {
+        'title': '3. Reconhecimento de Padrões',
+        'field': 'reconhecimento_padroes_concluido',
+        'slug': 'rec-padrao',
+        'order': 3,
+        'description': 'Identifique similaridades e tendências para simplificar a resolução de problemas.',
+        'lessons': 2, 'exercises': 1, 'dependency_field': 'decomposicao_concluido'
+    },
+    {
+        'title': '4. Abstração',
+        'field': 'abstracao_concluido',
+        'slug': 'abstracao',
+        'order': 4,
+        'description': 'Foque apenas nas informações importantes, ignorando detalhes irrelevantes.',
+        'lessons': 2, 'exercises': 1, 'dependency_field': 'reconhecimento_padroes_concluido'
+    },
+    {
+        'title': '5. Algoritmos',
+        'field': 'algoritmo_concluido',
+        'slug': 'algoritmo',
+        'order': 5,
+        'description': 'Desenvolva sequências lógicas e organizadas para resolver problemas de forma eficaz.',
+        'lessons': 2, 'exercises': 1, 'dependency_field': 'abstracao_concluido'
+    },
+    {
+        'title': '6. Projeto Final',
+        'field': 'projeto_final_concluido',
+        'slug': 'projeto-final',
+        'order': 6,
+        'description': 'Aplique todos os pilares do PC para solucionar um desafio prático de sala de aula.',
+        'lessons': 1, 'exercises': 0, 'dependency_field': 'algoritmo_concluido'
+    },
+]
+
+def usuario_logado():
+    """Retorna o objeto Usuario logado ou None."""
+    if 'usuario_id' in session:
+        # Usa db.session.get para buscar pelo ID de forma eficiente
+        return db.session.get(Usuario, session['usuario_id'])
+    return None
+
+def requires_auth(func):
+    """Decorator para verificar se o usuário está logado antes de acessar a rota."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not usuario_logado():
+            flash('Você precisa estar logado para acessar esta página.', 'warning')
+            return redirect(url_for('login'))
+        return func(*args, **kwargs)
+    return wrapper
+
+# Funções de Cálculo de Progresso (Centralizadas para reuso)
+def calculate_progress(progresso_db):
+    """Calcula todas as métricas de progresso do curso e retorna a lista de módulos."""
+    
+    total_modules = len(MODULO_CONFIG)
+    completed_modules = 0
+    total_lessons = sum(m['lessons'] for m in MODULO_CONFIG)
+    total_exercises = sum(m['exercises'] for m in MODULO_CONFIG)
+    completed_lessons = 0
+    completed_exercises = 0
+    
+    dynamic_modules = []
+    
+    # Rastreia se o módulo anterior foi completado para desbloquear o próximo
+    is_previous_completed = True 
+
+    for module_config in MODULO_CONFIG:
+        db_field = module_config['field']
+        is_completed = getattr(progresso_db, db_field, False)
         
-        if not progresso_anterior or not progresso_anterior.concluido:
-            # Se a anterior não foi concluída, bloqueia
-            return False, f"Acesso bloqueado. Conclua: {aula_anterior.titulo}"
+        # Lógica de Desbloqueio (é desbloqueado se o anterior foi completado)
+        is_unlocked = is_previous_completed
+
+        # Se este módulo foi concluído, ele conta e o próximo será desbloqueado
+        if is_completed:
+            completed_modules += 1
+            completed_lessons += module_config['lessons']
+            completed_exercises += module_config['exercises']
+            is_previous_completed = True # Garante que o próximo será desbloqueado
+        else:
+            # Se não foi concluído, o próximo módulo DEVE ficar bloqueado
+            is_previous_completed = False
+
+        dynamic_modules.append({
+            # DADOS ESTÁTICOS DO MODULO_CONFIG
+            'title': module_config['title'],
+            'description': module_config['description'],
+            'slug': module_config['slug'],
+            'order': module_config['order'],
             
-    # Se não tem aula anterior sequencial OU a anterior foi concluída
-    return True, "Acesso permitido."
+            # DADOS DINÂMICOS DE PROGRESSO
+            'is_unlocked': is_unlocked,
+            'is_completed': is_completed,
+            'lessons': module_config['lessons'],
+            'exercises': module_config['exercises'],
+        })
+    
+    overall_progress_percent = int((completed_modules / total_modules) * 100) if total_modules > 0 else 0
+    
+    return {
+        'overall_percent': overall_progress_percent,
+        'completed_modules': completed_modules,
+        'total_modules': total_modules,
+        'completed_lessons': completed_lessons,
+        'total_lessons': total_lessons,
+        'completed_exercises': completed_exercises,
+        'total_exercises': total_exercises,
+        'modules': dynamic_modules # A lista que você precisa no template
+    }
 
 
-# --- ROTAS DE AUTENTICAÇÃO ---
+# =========================================================
+# 4. ROTAS DE AUTENTICAÇÃO
+# =========================================================
 
-@app.route('/')
-@app.route('/index.html')
-def home():
-    return render_template('index.html')
+@app.route('/cadastro', methods=['GET', 'POST'])
+def cadastro():
+    usuario = usuario_logado()
+    if usuario:
+        return redirect(url_for('dashboard'))
 
-@app.route('/login-simple.html', methods=['GET', 'POST'])
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        email = request.form.get('email')
+        senha = request.form.get('senha')
+        
+        # 1. Verifica se o e-mail já existe
+        email_exists = db.session.execute(
+            select(Usuario).filter_by(email=email)
+        ).scalar_one_or_none()
+        
+        if email_exists:
+            flash('Este e-mail já está cadastrado. Tente fazer o login.', 'danger')
+            return render_template('cadastro.html', nome_for_form=nome, email_for_form=email)
+
+        # 2. Cria novo usuário, hash de senha e salva no DB
+        try:
+            novo_usuario = Usuario(nome=nome, email=email)
+            novo_usuario.set_senha(senha)
+            db.session.add(novo_usuario)
+            db.session.flush() # Obtém o ID
+            
+            # 3. Cria um registro de progresso
+            novo_progresso = Progresso(usuario_id=novo_usuario.id)
+            db.session.add(novo_progresso)
+            db.session.commit()
+
+            flash('Cadastro realizado com sucesso! Faça login para começar.', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro interno ao cadastrar: {str(e)}', 'danger')
+            
+    # Variável ajustada: user=usuario
+    return render_template('cadastro.html', user=usuario)
+
+@app.route('/login', methods=['GET', 'POST'])
 def login():
+    usuario = usuario_logado()
+    if usuario:
+        return redirect(url_for('dashboard'))
+
     if request.method == 'POST':
         email = request.form.get('email')
-        senha = request.form.get('password')
+        senha = request.form.get('senha')
         
-        usuario = Usuario.query.filter_by(email=email).first()
-        
-        if usuario and check_password_hash(usuario.senha, senha):
-            session['logged_in'] = True
-            session['user_id'] = usuario.id
-            session['user_name'] = usuario.nome.split()[0]
-            return redirect(url_for('modulos'))
-        
-        return render_template('login-simple.html', error="Email ou senha incorretos.")
-        
-    return render_template('login-simple.html')
+        usuario = db.session.execute(
+            select(Usuario).filter_by(email=email)
+        ).scalar_one_or_none()
+
+        if usuario and usuario.check_senha(senha):
+            session['usuario_id'] = usuario.id
+            flash(f'Bem-vindo(a), {usuario.nome}!', 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('E-mail ou senha incorretos.', 'danger')
+            return render_template('login.html', email_for_form=email)
+
+    # Variável ajustada: user=usuario
+    return render_template('login.html', user=usuario)
 
 @app.route('/logout')
 def logout():
-    session.pop('logged_in', None)
-    session.pop('user_id', None)
-    session.pop('user_name', None)
-    return redirect(url_for('login'))
+    """Remove o ID da sessão e redireciona para a página inicial."""
+    session.pop('usuario_id', None)
+    flash('Você saiu da sua conta.', 'info')
+    return redirect(url_for('index'))
 
-# --- ROTAS DO DASHBOARD ---
+# =========================================================
+# 5. ROTAS DE ÁREA RESTRITA E PERFIL (GET/POST)
+# =========================================================
 
-@app.route('/modulos.html')
-def modulos():
-    if 'logged_in' not in session:
-        return redirect(url_for('login'))
+@app.route('/')
+def index():
+    usuario = usuario_logado()
+    # Variável ajustada: user=usuario
+    return render_template('index.html', user=usuario)
 
-    cursos = Curso.query.all()
-    cursos_com_progresso = []
-    usuario_id = session['user_id']
-    
-    for curso in cursos:
-        todas_aulas = Aula.query.join(Modulo).filter(Modulo.curso_id == curso.id).all()
-        total_aulas = len(todas_aulas)
-        
-        aulas_concluidas = Progresso.query.join(Aula).filter(
-            Progresso.usuario_id == usuario_id,
-            Progresso.concluido == True,
-            Aula.id.in_([a.id for a in todas_aulas])
-        ).count()
-        
-        progresso_percentual = int((aulas_concluidas / total_aulas) * 100) if total_aulas > 0 else 0
-        
-        cursos_com_progresso.append({
-            'titulo': curso.titulo,
-            'descricao': curso.descricao,
-            'progresso_percentual': progresso_percentual,
-            'progresso_texto': f"{progresso_percentual}%",
-            'modulos': curso.modulos
-        })
+@app.route('/dashboard')
+@requires_auth
+def dashboard():
+    usuario = usuario_logado()
+    return render_template('dashboard.html', user=usuario)
 
-    return render_template('modulos.html', 
-                           cursos=cursos_com_progresso,
-                           active_page='modulos')
-
-@app.route('/perfil.html')
+@app.route('/perfil', methods=['GET', 'POST']) 
+@requires_auth
 def perfil():
-    if 'logged_in' not in session:
-        return redirect(url_for('login'))
+    usuario = usuario_logado()
     
-    usuario = Usuario.query.get(session['user_id'])
-    
-    return render_template('perfil.html', 
-                           usuario=usuario,
-                           active_page='perfil')
-
-
-# --- ROTAS DE CONTEÚDO E PROGRESSO ---
-
-@app.route('/conteudo-aula/<int:aula_id>', methods=['GET', 'POST'])
-def aula_conteudo(aula_id):
-    if 'logged_in' not in session:
-        return redirect(url_for('login'))
+    if request.method == 'POST':
+        # Pega os dados do formulário
+        name = request.form.get('name')
+        email = request.form.get('email')
+        phone = request.form.get('phone')
+        institution = request.form.get('institution')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
         
-    usuario_id = session['user_id']
-    aula = Aula.query.get_or_404(aula_id)
-
-    # 1. Verifica Acesso
-    acesso_liberado, _ = verificar_acesso_aula(usuario_id, aula_id)
-    if not acesso_liberado:
-        # Se for bloqueado, redireciona para a lista de módulos (ou aula anterior)
-        # return redirect(url_for('modulos')) 
-        # Ou mostra uma página de erro/bloqueio (por simplicidade, vamos permitir 
-        # a visualização, mas bloquear o botão de conclusão no template)
-        pass 
-
-    # 2. Busca o progresso do usuário para esta aula
-    progresso = Progresso.query.filter_by(usuario_id=usuario_id, aula_id=aula_id).first()
-    is_concluido = progresso.concluido if progresso else False
-
-    # 3. Monta a navegação lateral
-    modulo = aula.modulo
-    aulas_navegacao = []
-    
-    for a in Modulo.query.get(modulo.id).aulas:
-        # Status de Conclusão da aula atual da iteração
-        p_nav = Progresso.query.filter_by(usuario_id=usuario_id, aula_id=a.id).first()
-        concluido_nav = p_nav.concluido if p_nav else False
-
-        # Verifica o status de bloqueio para a navegação
-        acesso_nav, _ = verificar_acesso_aula(usuario_id, a.id)
+        tem_erro = False
         
-        aulas_navegacao.append({
-            'id': a.id,
-            'titulo': a.titulo,
-            'concluido': concluido_nav,
-            'ativo': a.id == aula_id,
-            'bloqueado': not acesso_nav,
-            'url': url_for('aula_conteudo', aula_id=a.id)
-        })
+        try:
+            # 1. Atualiza dados básicos
+            usuario.nome = name
+            usuario.telefone = phone
+            usuario.instituicao = institution
+            
+            # 2. Checa e atualiza E-mail
+            if email != usuario.email:
+                email_existente = db.session.execute(
+                    select(Usuario).filter_by(email=email)
+                ).scalar_one_or_none()
+                
+                if email_existente and email_existente.id != usuario.id:
+                    flash("Este novo e-mail já está em uso por outro usuário.", 'danger')
+                    tem_erro = True
+                else:
+                    usuario.email = email
+
+            # 3. Processa a mudança de senha
+            if new_password:
+                if new_password != confirm_password:
+                    flash("As novas senhas digitadas não coincidem.", 'danger')
+                    tem_erro = True
+                elif len(new_password) < 6:
+                    flash("A nova senha deve ter no mínimo 6 caracteres.", 'danger')
+                    tem_erro = True
+                else:
+                    usuario.set_senha(new_password)
+                    flash("Senha atualizada com sucesso!", 'success')
+
+            # 4. Commit no Banco de Dados
+            if not tem_erro:
+                db.session.commit()
+                # Se não atualizou a senha, exibe sucesso nos dados
+                if not new_password:
+                    flash("Dados do perfil atualizados com sucesso!", 'success')
+            else:
+                db.session.rollback() # Desfaz alterações se houve erro de validação
+                
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Ocorreu um erro inesperado ao salvar: {str(e)}", 'danger')
+            
+        # Garante que o usuário tem o objeto mais recente em caso de erro/sucesso
+        return render_template('perfil.html', user=usuario) # Este retorno é o final da lógica POST
+
+    # Lógica GET
+    return render_template('perfil.html', user=usuario)
+
+@app.route('/progresso')
+@requires_auth
+def progresso():
+    usuario = usuario_logado()
+    progresso_db = usuario.progresso # Progresso do DB
     
-    return render_template('conteudo-aula-template.html', 
-                           aula=aula, 
-                           is_concluido=is_concluido,
-                           acesso_liberado=acesso_liberado,
-                           modulo=modulo,
-                           aulas_navegacao=aulas_navegacao,
-                           active_page='modulos')
+    # OBS: progresso_data.modules não é usado aqui, mas geramos para consistência
+    progresso_data = calculate_progress(progresso_db) 
+
+    context = {
+        'user': usuario,
+        'title': "Meu Progresso",
+        'progresso_data': progresso_data
+    }
+    
+    return render_template('progresso.html', **context)
+
+# =========================================================
+# 6. ROTAS DE CERTIFICADO (Gerando o documento LaTeX)
+# =========================================================
+
+@app.route('/certificado')
+@requires_auth
+def certificado():
+    usuario = usuario_logado()
+    progresso_db = usuario.progresso
+    
+    # Recalcula o progresso para garantir o status de conclusão
+    progresso_data = calculate_progress(progresso_db)
+    
+    # 1. Verifica se o certificado está disponível (100% de conclusão)
+    certificado_disponivel = progresso_data['overall_percent'] == 100
+    
+    # 2. GERA A DATA FORMATADA NO PYTHON
+    data_emissao = datetime.now().strftime('%d/%m/%Y')
+    
+    context = {
+        'user': usuario,
+        'title': "Certificado",
+        'certificado_disponivel': certificado_disponivel,
+        'nome_usuario': usuario.nome, # Nome para exibição no certificado
+        'data_emissao': data_emissao # Data formatada para o template
+    }
+    return render_template('certificado.html', **context)
+
+@app.route('/gerar-certificado')
+@requires_auth
+def gerar_certificado():
+    usuario = usuario_logado()
+    progresso_db = usuario.progresso
+    progresso_data = calculate_progress(progresso_db)
+    
+    # Verifica se o certificado está disponível
+    if progresso_data['overall_percent'] != 100:
+        flash('Você deve concluir todos os módulos para gerar o certificado.', 'warning')
+        return redirect(url_for('certificado'))
+
+    # Dados para o certificado
+    nome_completo = usuario.nome.upper()
+    
+    # Formato de data para LaTeX: "21 de \%B de \%Y"
+    data_conclusao_str = datetime.now().strftime('%d de \%B de \%Y')
+    
+    # Gera o conteúdo LaTeX
+    latex_content = generate_latex_certificate(nome_completo, data_conclusao_str)
+    
+    # Retorna o arquivo LaTeX como resposta
+    # A plataforma irá compilar este arquivo .tex para PDF para o usuário
+    return Response(
+        latex_content,
+        mimetype='application/x-tex',
+        headers={'Content-Disposition': f'attachment;filename=Certificado_{nome_completo.replace(" ", "_")}.tex'}
+    )
+
+def generate_latex_certificate(nome_completo, data_conclusao):
+    """Gera o código LaTeX para o certificado."""
+    # Definição das cores para replicar o fundo escuro e a borda clara.
+    # Usando Noto Serif para dar um toque mais formal e acadêmico.
+    return f"""
+\\documentclass[landscape, a4paper, 12pt]{{article}}
+
+% --- UNIVERSAL PREAMBLE BLOCK ---
+% Define geometria e margens
+\\usepackage[a4paper, top=1.5cm, bottom=1.5cm, left=1.5cm, right=1.5cm]{{geometry}}
+\\usepackage{{fontspec}}
+
+% Configuração de línguas e fontes (Português e Inglês)
+\\usepackage[portuguese, bidi=basic, provide=*]{{babel}}
+
+\\babelprovide[import, onchar=ids fonts]{{portuguese}}
+\\babelprovide[import, onchar=ids fonts]{{english}}
+
+% Define a fonte principal (serif)
+\\babelfont{{rm}}{{Noto Serif}}
+\\pagestyle{{empty}} % Remove números de página e cabeçalhos
+
+% Pacotes de estilo
+\\usepackage{{xcolor}}
+\\usepackage{{parskip}}
+\\usepackage{{ragged2e}}
+\\usepackage{{tikz}} % Usado para desenhar o fundo e a borda
+
+% Define cores para o esquema de design
+\\definecolor{{CorFundo}}{{HTML}}{{191923}} % Cor escura (quase preta)
+\\definecolor{{CorPrincipal}}{{HTML}}{{FFFFFF}} % Branco
+\\definecolor{{CorDestaque}}{{HTML}}{{F9D038}} % Amarelo Dourado
+
+% Comando para a linha de assinatura
+\\newcommand{{\\assinatura}}[2]{{
+    \\begin{{minipage}}[t]{{0.45\\textwidth}}
+        \\centering
+        \\vspace{{1cm}}
+        {{\\color{{CorDestaque}}\\rule{{\\linewidth}}{{0.5pt}}}} % Linha dourada
+        \\small{{\\color{{CorPrincipal}}\\textbf{{#1}}}} \\\\
+        \\tiny{{\\color{{CorPrincipal}}\\textit{{#2}}}}
+    \\end{{minipage}}
+}}
+
+\\begin{{document}}
+\\begin{{tikzpicture}}[overlay, remember picture]
+    % Desenha o fundo preto/escuro que preenche toda a página
+    \\fill[fill=CorFundo] (current page.south west) rectangle (current page.north east);
+    
+    % Desenha a borda decorativa (retângulo mais interno, estilo moldura)
+    \\draw[color=CorPrincipal, line width=8pt]
+        ([xshift=5mm, yshift=5mm]current page.south west)
+        rectangle ([xshift=-5mm, yshift=-5mm]current page.north east);
+\\end{{tikzpicture}}
+
+\\begin{{center}}
+\\color{{CorPrincipal}} % Todo o texto será branco
+
+\\vspace*{{2cm}}
+
+% Título do Logo (Simulando o "PC Teacher" com cores)
+{{\\Huge\\textbf{PC} \\color{{CorDestaque}}\\textbf{TEACHER}}}
+
+\\vspace{{1.5cm}}
+
+% Título Principal
+{{\\fontsize{{50pt}}{{60pt}}\\selectfont\\textbf{CERTIFICADO}}} 
+
+\\vspace{{1.5cm}}
+
+{{\\Large Certificamos que}}
+
+\\vspace{{1cm}}
+
+% Nome do Aluno
+{{\\fontsize{{35pt}}{{40pt}}\\selectfont\\textbf{{{nome_completo}}}}}
+
+\\vspace{{1.5cm}}
+
+% Conteúdo
+\\parbox{{0.8\\textwidth}}{{\\centering
+    concluiu com êxito o curso de \\textbf{{Pensamento Computacional}} realizado
+    na plataforma \\textbf{{PC Teacher}}, com carga horária total de \\textbf{{40 horas}}.
+}}
+
+\\vspace{{1.5cm}}
+
+{{\\large Manaus, {data_conclusao}.}}
+
+\\vspace{{2cm}}
+
+% Assinaturas
+\\begin{{tabular}}{{@{{\\extracolsep{{3cm}}}}cc}}
+\\assinatura{{PC TEACHER}}{{Instrutor Chefe}} & \\assinatura{{PROFESSOR}}{{Professor do Curso}} \\\\
+\\end{{tabular}}
+
+\\end{{center}}
+
+\\end{{document}}
+"""
 
 
-@app.route('/marcar_concluido/<int:aula_id>', methods=['POST'])
-def marcar_concluido(aula_id):
-    if 'logged_in' not in session:
-        return redirect(url_for('login'))
+# 7. ROTAS DE CONTEÚDO DE CURSO - TELAS DE APRESENTAÇÃO (Rotas estáticas, mas mantidas)
+@app.route('/infor-curso-decomposicao')
+def infor_curso_decomposicao():
+    usuario = usuario_logado()
+    return render_template('infor-curso-decomposicao.html', user=usuario)
 
-    usuario_id = session['user_id']
+@app.route('/infor-curso-rec-padrao')
+def infor_curso_rec_padrao():
+    usuario = usuario_logado()
+    return render_template('infor-curso-rec-padrao.html', user=usuario)
+
+@app.route('/infor-curso-abstracao')
+def infor_curso_abstracao():
+    usuario = usuario_logado()
+    return render_template('infor-curso-abstracao.html', user=usuario)
+
+@app.route('/infor-curso-algoritmo')
+def infor_curso_algoritmo():
+    usuario = usuario_logado()
+    return render_template('infor-curso-algoritmo.html', user=usuario)
+
+
+# =========================================================
+# 7. ROTAS DE CONTEÚDO DE CURSO (Protegidas por autenticação)
+# =========================================================
+
+# ROTA CORRIGIDA PARA PASSAR A LISTA 'modulos'
+@app.route('/modulos')
+@requires_auth
+def modulos():
+    usuario = usuario_logado()
+    progresso = usuario.progresso
     
-    # Garante que ele não marque se estiver bloqueado
-    acesso_liberado, _ = verificar_acesso_aula(usuario_id, aula_id)
-    if not acesso_liberado:
-        return redirect(url_for('modulos')) 
-        
-    progresso = Progresso.query.filter_by(usuario_id=usuario_id, aula_id=aula_id).first()
-    if not progresso:
-        progresso = Progresso(usuario_id=usuario_id, aula_id=aula_id)
-        
-    progresso.concluido = True
-    progresso.data_conclusao = datetime.utcnow()
+    # 1. Calcula o progresso, que agora retorna o dicionário com a chave 'modules'
+    progresso_data = calculate_progress(progresso)
     
-    db.session.add(progresso)
-    db.session.commit()
+    # 2. EXTRAI a lista de módulos do dicionário gerado
+    modulos_list = progresso_data.get('modules', []) 
+
+    # 3. Passa a lista sob o nome 'modulos', como o template espera
+    return render_template('modulos.html', user=usuario, modulos=modulos_list, progresso_data=progresso_data)
+
+
+# Rota para finalizar um módulo (chamada via formulário POST)
+@app.route('/concluir-modulo/<string:modulo_nome>', methods=['POST'])
+@requires_auth
+def concluir_modulo(modulo_nome):
+    usuario = usuario_logado()
+    progresso = usuario.progresso
     
-    # Redireciona para a próxima aula
-    aula_atual = Aula.query.get_or_404(aula_id)
+    # Mapeamento do nome da rota/identificador para o campo do DB
+    modulo_map = {
+        'introducao': 'introducao_concluido',
+        'decomposicao': 'decomposicao_concluido',
+        'rec-padrao': 'reconhecimento_padroes_concluido', # Corrigido o slug para 'rec-padrao'
+        'abstracao': 'abstracao_concluido',
+        'algoritmo': 'algoritmo_concluido',
+        'projeto-final': 'projeto_final_concluido', # Corrigido o slug para 'projeto-final'
+    }
     
-    proxima_aula = Aula.query.filter(
-        Aula.modulo_id == aula_atual.modulo_id,
-        Aula.ordem > aula_atual.ordem
-    ).order_by(Aula.ordem.asc()).first()
+    db_field = modulo_map.get(modulo_nome)
     
-    if proxima_aula:
-        return redirect(url_for('aula_conteudo', aula_id=proxima_aula.id))
+    if db_field:
+        try:
+            # 1. Altera o status do campo no objeto progresso
+            setattr(progresso, db_field, True)
+            
+            # 2. Salva a alteração no banco
+            db.session.commit()
+            
+            # Formata o nome para a mensagem
+            # Tenta encontrar a configuração pelo slug para pegar o título
+            config_item = next((m for m in MODULO_CONFIG if m['slug'] == modulo_nome), None)
+            display_name = config_item['title'].split('. ')[1] if config_item else "Módulo"
+            
+            flash(f'Módulo "{display_name}" concluído com sucesso! O próximo foi desbloqueado.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao concluir o módulo: {str(e)}', 'danger')
+            
     else:
-        # Se for a última aula do módulo, volta para a lista de módulos
+        flash('Módulo inválido.', 'danger')
+        
+    # Redireciona sempre para a lista de módulos
+    return redirect(url_for('modulos'))
+
+
+# ROTA CORRIGIDA: Ajustando a rota de conteúdo para garantir o acesso sequencial correto
+@app.route('/conteudo-aula/<string:module_slug>')
+@requires_auth
+def conteudo_aula(module_slug):
+    usuario = usuario_logado()
+    progresso = usuario.progresso
+    
+    # 1. Encontra a configuração do módulo
+    module_config = next((m for m in MODULO_CONFIG if m['slug'] == module_slug), None)
+    
+    if not module_config:
+        flash("Módulo não encontrado.", 'danger')
+        return redirect(url_for('modulos'))
+        
+    # 2. Verifica o progresso e desbloqueio
+    progresso_data = calculate_progress(progresso)
+    current_module_data = next((m for m in progresso_data['modules'] if m['slug'] == module_slug), None)
+    
+    if not current_module_data:
+        # Se for um slug válido, mas por algum motivo o calculate_progress falhou em retornar
+        flash("Erro interno ao carregar dados de progresso do módulo.", 'danger')
+        return redirect(url_for('modulos'))
+    
+    # Lógica de Bloqueio Aprimorada:
+    # Se NÃO for o primeiro módulo (order > 1) E o status de is_unlocked for Falso,
+    # significa que o módulo anterior não foi concluído.
+    if current_module_data['order'] != 1 and not current_module_data['is_unlocked']:
+        flash(f"O módulo '{module_config['title']}' está bloqueado. Complete o anterior primeiro.", 'warning')
+        return redirect(url_for('modulos'))
+        
+    # 3. Renderiza o template de conteúdo com base no slug
+    template_name = f'conteudo-{module_slug}.html'
+    
+    # Este é um placeholder, você precisa garantir que esses templates existam!
+    try:
+        return render_template(template_name, user=usuario, module=current_module_data)
+    except Exception:
+        # Fallback caso o template específico não exista
+        flash(f"Template de conteúdo para '{module_slug}' não encontrado. Verifique o arquivo {template_name}.", 'danger')
         return redirect(url_for('modulos'))
 
-# --- Rota do Certificado e Progresso (Simples) ---
 
-@app.route('/progresso.html')
-def progresso():
-    if 'logged_in' not in session:
-        return redirect(url_for('login'))
-    
-    # Para a rota progresso.html, você pode retornar o template estático por enquanto
-    # ou adicionar a lógica de cálculo (que é complexa e faremos depois)
-    return render_template('progresso.html', active_page='progresso')
-    
-@app.route('/certificado.html')
-def certificado():
-    if 'logged_in' not in session:
-        return redirect(url_for('login'))
-        
-    # Lógica de verificação de conclusão total (simplificada)
-    usuario_id = session['user_id']
-    
-    total_aulas_curso1 = Aula.query.join(Modulo).join(Curso).filter(Curso.titulo == "Pensamento Computacional: Estrutura e Aplicação").count()
-    aulas_concluidas = Progresso.query.join(Aula).join(Modulo).join(Curso).filter(
-        Progresso.usuario_id == usuario_id,
-        Progresso.concluido == True,
-        Curso.titulo == "Pensamento Computacional: Estrutura e Aplicação"
-    ).count()
-
-    certificado_disponivel = (aulas_concluidas == total_aulas_curso1) and (total_aulas_curso1 > 0)
-    
-    return render_template('certificado.html', 
-                           certificado_disponivel=certificado_disponivel,
-                           active_page='certificado')
-
-
-# --- CRIAÇÃO DO BANCO DE DADOS E DADOS INICIAIS ---
-
-@app.cli.command("initdb")
-def initdb_command():
-    """Cria as tabelas do banco de dados e popula com dados iniciais."""
-    with app.app_context():
-        db.drop_all()
-        db.create_all()
-        
-        # 1. Usuário de Teste
-        hashed_password = generate_password_hash("123456", method='pbkdf2:sha256')
-        user_joao = Usuario(nome="João Professor Silva", email="joao@teste.com", senha=hashed_password)
-        db.session.add(user_joao)
-        
-        # 2. Curso Principal
-        curso_pc = Curso(titulo="Pensamento Computacional: Estrutura e Aplicação", 
-                         descricao="Este curso abrange os quatro pilares do Pensamento Computacional e sua aplicação prática no currículo do Ensino Fundamental.")
-        db.session.add(curso_pc)
-        
-        curso_robotica = Curso(titulo="Introdução à Robótica Educacional", 
-                              descricao="Fundamentos básicos de eletrônica e programação com foco na criação de projetos interativos em sala de aula.")
-        db.session.add(curso_robotica)
-        db.session.commit() 
-
-        # 3. Módulos
-        mod1 = Modulo(curso_id=curso_pc.id, titulo="Decomposição", ordem=1)
-        mod2 = Modulo(curso_id=curso_pc.id, titulo="Reconhecimento de Padrões", ordem=2)
-        mod3 = Modulo(curso_id=curso_pc.id, titulo="Abstração", ordem=3)
-        
-        mod_r1 = Modulo(curso_id=curso_robotica.id, titulo="Introdução ao Arduino", ordem=1)
-        mod_r2 = Modulo(curso_id=curso_robotica.id, titulo="Sensores e Atuadores", ordem=2)
-        
-        db.session.add_all([mod1, mod2, mod3, mod_r1, mod_r2])
-        db.session.commit()
-
-        # 4. Aulas do Módulo 1 (Decomposição) - Usando o HTML estático como base de conteúdo
-        conteudo_aula1_1 = '<p>Seja bem-vindo ao primeiro módulo! Decomposição é o processo de quebrar um problema complexo em partes menores e mais gerenciáveis. Assista ao vídeo e comece o exercício!</p><div class="video-player"><iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Video Aula" allowfullscreen></iframe></div>'
-        aula1_1 = Aula(modulo_id=mod1.id, titulo="Aula 1.1: Introdução ao Conceito", ordem=1, sequencial=True, conteudo_html=conteudo_aula1_1)
-        
-        conteudo_aula1_2 = '<p>Aprofundando: Usamos a decomposição todos os dias, mas formalizá-la ajuda no pensamento lógico. Veja como aplicar isso em problemas de sala de aula.</p>'
-        aula1_2 = Aula(modulo_id=mod1.id, titulo="Aula 1.2: Exemplos Práticos", ordem=2, sequencial=True, conteudo_html=conteudo_aula1_2)
-        
-        conteudo_ex1_3 = '<p><strong>Desafio!</strong> Dado o cenário: "Organizar a formatura", decomponha-o em 5 subproblemas. Envie suas respostas no campo abaixo.</p>'
-        aula1_3 = Aula(modulo_id=mod1.id, titulo="1.3: Exercício de Fixação", ordem=3, sequencial=True, conteudo_html=conteudo_ex1_3)
-        
-        db.session.add_all([aula1_1, aula1_2, aula1_3])
-        
-        # 5. Aulas do Módulo 2 (Bloqueado)
-        conteudo_aula2_1 = '<p>Este é o conteúdo do módulo 2. Você precisa concluir todas as aulas anteriores para liberar este módulo!</p>'
-        aula2_1 = Aula(modulo_id=mod2.id, titulo="Aula 2.1: Conceitos Básicos", ordem=1, sequencial=True, conteudo_html=conteudo_aula2_1)
-        db.session.add(aula2_1)
-        
-        db.session.commit()
-        
-        # Popula progresso inicial (simulando que o usuário concluiu a primeira aula)
-        progresso_1_1 = Progresso(usuario_id=user_joao.id, aula_id=aula1_1.id, concluido=True, data_conclusao=datetime.utcnow())
-        db.session.add(progresso_1_1)
-        
-        db.session.commit()
-        print('Banco de dados criado e dados iniciais (usuário e curso) inseridos.')
+# =========================================================
+# 8. EXECUÇÃO
+# =========================================================
 
 if __name__ == '__main__':
-    # Cria o DB se ainda não existir antes de rodar o Flask
     with app.app_context():
-        db.create_all() 
+        # Cria as tabelas do banco de dados se elas não existirem
+        db.create_all()
+        
     app.run(debug=True)

@@ -8,8 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
-    <link rel="stylesheet" href="assets/css/dashboard.css">
-    <link rel="stylesheet" href="assets/css/perfil.css"> 
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/perfil.css') }}"> 
 </head>
 <body>
 
@@ -17,26 +17,26 @@
         
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="assets/img/logo-black.png" alt="Professores ensinando"> 
+                <img src="{{ url_for('static', filename='img/logo-black.png') }}" alt="Professores ensinando"> 
                 <span class="title">PC Teacher</span>
             </div>
             
             <nav class="sidebar-nav">
-                <a href="perfil.html" class="sidebar-item active">
+                <a href="{{ url_for('perfil') }}" class="sidebar-item active">
                     <i class="fas fa-user-circle"></i> Meu Perfil
                 </a>
-                <a href="modulos.html" class="sidebar-item">
+                <a href="{{ url_for('modulos') }}" class="sidebar-item">
                     <i class="fas fa-book"></i> Módulos
                 </a>
-                <a href="progresso.html" class="sidebar-item">
+                <a href="{{ url_for('progresso') }}" class="sidebar-item">
                     <i class="fas fa-chart-line"></i> Meu Progresso
                 </a>
-                <a href="certificado.html" class="sidebar-item">
+                <a href="{{ url_for('certificado') }}" class="sidebar-item">
                     <i class="fas fa-certificate"></i> Certificado
                 </a>
             </nav>
             
-            <a href="index.html" class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="sidebar-footer">
                 <i class="fas fa-sign-out-alt"></i> Sair
             </a>
         </aside>
@@ -44,39 +44,50 @@
         <main class="main-content">
             <h1>Meu Perfil</h1>
 
+            {% if mensagem_sucesso %}
+                <div class="alert success-message" style="color: #155724; background-color: #d4edda; border-color: #c3e6cb; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+                    {{ mensagem_sucesso }}
+                </div>
+            {% endif %}
+            {% if mensagem_erro %}
+                <div class="alert error-message" style="color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+                    {{ mensagem_erro }}
+                </div>
+            {% endif %}
+
             <div class="profile-container">
                 
                 <div class="profile-header">
                     <div class="profile-avatar">
-                        J
+                        {{ user.nome[0] if user.nome else 'P' }} 
                     </div>
                     <div class="profile-info">
-                        <h2>João Silva</h2>
-                        <p>Professor de Ensino Fundamental I</p>
+                        <h2>{{ user.nome if user.nome else 'Professor(a)' }}</h2>
+                        <p>{{ user.cargo if user.cargo else 'Sem Cargo Definido' }}</p>
                     </div>
                 </div>
 
-                <form class="profile-form">
+                <form class="profile-form" method="POST" action="{{ url_for('perfil') }}">
                     
                     <div class="form-group">
                         <label for="name">Nome Completo</label>
-                        <input type="text" id="name" value="João Ricardo Silva" required>
+                        <input type="text" id="name" name="name" value="{{ user.nome }}" required>
                     </div>
                     
                     <div class="form-group grid-2-cols">
                         <div>
                             <label for="email">E-mail</label>
-                            <input type="email" id="email" value="joao.silva@escola.com.br" required>
+                            <input type="email" id="email" name="email" value="{{ user.email }}" required>
                         </div>
                         <div>
                             <label for="phone">Telefone (Opcional)</label>
-                            <input type="text" id="phone" value="(99) 99999-9999">
+                            <input type="text" id="phone" name="phone" value="{{ user.telefone }}">
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label for="institution">Instituição/Escola</label>
-                        <input type="text" id="institution" value="Escola Municipal Prof. Maria de Lourdes">
+                        <input type="text" id="institution" name="institution" value="{{ user.instituicao }}">
                     </div>
 
                     <hr style="margin: 30px 0; border-color: #eee;">
@@ -86,11 +97,11 @@
                     <div class="form-group grid-2-cols">
                         <div>
                             <label for="new-password">Nova Senha</label>
-                            <input type="password" id="new-password" placeholder="Mínimo 6 caracteres">
+                            <input type="password" id="new-password" name="new_password" placeholder="Mínimo 6 caracteres">
                         </div>
                         <div>
                             <label for="confirm-password">Confirmar Nova Senha</label>
-                            <input type="password" id="confirm-password" placeholder="Repita a nova senha">
+                            <input type="password" id="confirm-password" name="confirm_password" placeholder="Repita a nova senha">
                         </div>
                     </div>
 

@@ -20,11 +20,24 @@
         <nav>
             <a href="#cursos" class="nav-item">Cursos</a> 
             <a href="#sobre" class="nav-item">Sobre</a> 
+            
             <a href="{{ url_for('login') }}" class="btn-entrar">Entrar</a>
+            <a href="{{ url_for('cadastro') }}" class="btn-entrar" style="margin-left: 10px;">Cadastrar</a>
+            
         </nav>
     </header>
 
     <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-container">
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        
         <section class="hero-banner">
             <div class="container">
                 <div class="hero-content">
@@ -72,41 +85,70 @@
             </div>
         </section>
 
-        <section class="section-cursos" id="cursos">
-            <div class="container">
-                <h2>Cursos</h2>
-                <div class="cursos-grid">
-                    
-                    <div class="curso-card decomposicao">
-                        <img src="{{ url_for('static', filename='img/Decomposicao.png') }}" alt="Ícone Decomposição">
-                        <h3>Decomposição</h3>
-                        <p>É a habilidade de quebrar grandes problemas em partes menores e mais simples, tornando a solução mais fácil e eficiente.</p>
-                        <a href="#" class="btn-saibamais">Saiba Mais</a>
-                    </div>
-                    
-                    <div class="curso-card padroes">
-                        <img src="{{ url_for('static', filename='img/recpadrao.png') }}" alt="Ícone Padrões">
-                        <h3>Reconhecimento de Padrões</h3>
-                        <p>É a identificação de semelhanças e repetições em problemas, o que economiza tempo e permite a reutilização de soluções.</p>
-                        <a href="#" class="btn-saibamais">Saiba Mais</a>
-                    </div>
-                    
-                    <div class="curso-card abstracao">
-                        <img src="{{ url_for('static', filename='img/abstracao.png') }}" alt="Ícone Abstração">
-                        <h3>Abstração</h3>
-                        <p>Você aprende a focar nas informações importantes, ignorando detalhes irrelevantes para facilitar a criação de modelos e representações.</p>
-                        <a href="#" class="btn-saibamais">Saiba Mais</a>
-                    </div>
-                    
-                    <div class="curso-card algoritmos">
-                        <img src="{{ url_for('static', filename='img/algoritmo.png') }}" alt="Ícone Algoritmos">
-                        <h3>Algoritmos</h3>
-                        <p>São as sequências de passos lógicos e organizados que permitem resolver problemas ou executar uma tarefa, de forma estruturada e replicável.</p>
-                        <a href="#" class="btn-saibamais">Saiba Mais</a>
-                    </div>
-                </div>
-            </div>
-        </section>
+      <section class="section-cursos" id="cursos">
+  <style>
+    .cursos-grid {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .curso-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between; /* garante alinhamento vertical */
+      align-items: center;
+      text-align: center;
+      height: 420px; /* todos com mesma altura */
+      box-sizing: border-box;
+    }
+
+    .curso-card p {
+      flex-grow: 1; /* empurra o botão pra baixo */
+    }
+
+    .btn-saibamais {
+      margin-top: 10px;
+    }
+  </style>
+
+  <div class="container">
+    <h2>Cursos</h2>
+    <div class="cursos-grid">
+      
+      <div class="curso-card decomposicao">
+        <img src="{{ url_for('static', filename='img/Decomposicao.png') }}" alt="Ícone Decomposição">
+        <h3>Decomposição</h3>
+        <p>É a habilidade de quebrar grandes problemas em partes menores e mais simples, tornando a solução mais fácil e eficiente.</p>
+        <a href="{{ url_for('infor_curso_decomposicao') }}" class="btn-saibamais">Saiba Mais</a>
+      </div>
+
+      <div class="curso-card padroes">
+        <img src="{{ url_for('static', filename='img/recpadrao.png') }}" alt="Ícone Padrões">
+        <h3>Reconhecimento de Padrões</h3>
+        <p>É a identificação de semelhanças e repetições em problemas, o que economiza tempo e permite a reutilização de soluções.</p>
+        <a href="{{ url_for('infor_curso_rec_padrao') }}" class="btn-saibamais">Saiba Mais</a>
+      </div>
+
+      <div class="curso-card abstracao">
+        <img src="{{ url_for('static', filename='img/abstracao.png') }}" alt="Ícone Abstração">
+        <h3>Abstração</h3>
+        <p>Você aprende a focar nas informações importantes, ignorando detalhes irrelevantes para facilitar a criação de modelos e representações.</p>
+        <a href="{{ url_for('infor_curso_abstracao') }}" class="btn-saibamais">Saiba Mais</a>
+      </div>
+
+      <div class="curso-card algoritmos">
+        <img src="{{ url_for('static', filename='img/algoritmo.png') }}" alt="Ícone Algoritmos">
+        <h3>Algoritmos</h3>
+        <p>São as sequências de passos lógicos e organizados que permitem resolver problemas ou executar uma tarefa, de forma estruturada e replicável.</p>
+        <a href="{{ url_for('infor_curso_algoritmo') }}" class="btn-saibamais">Saiba Mais</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
 
         <section class="section-sobre" id="sobre">
             <div class="container">
@@ -164,8 +206,8 @@
                     </div>
 
                     <div class="equipe-card">
-                        <img src="{{ url_for('static', filename='img/manu.png') }}" alt="Foto de Emanuela">
-                        <p>Emanuela</p>
+                        <img src="{{ url_for('static', filename='img/manu.png') }}" alt="Foto de Emanuele">
+                        <p>Emanuele</p>
                     </div>
 
                     <div class="equipe-card">

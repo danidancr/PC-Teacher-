@@ -1,102 +1,111 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PC Teacher - Dashboard</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    
-    <link rel="stylesheet" href="assets/css/dashboard.css">
-    <link rel="stylesheet" href="assets/css/modulos.css"> 
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PC Teacher - Módulos</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+<!-- Link para Tailwind CSS para classes como flex, text-xl, etc. -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modulos.css') }}">
+
+<style>
+    /* Define a fonte Poppins como padrão */
+    body { font-family: 'Poppins', sans-serif; }
+</style>
+
+
 </head>
 <body>
+<!-- Exibe mensagens flash (sucesso, erro, aviso) -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-messages-container">
+{% for category, message in messages %}
+<div class="flash-message flash-{{ category }}">{{ message }}</div>
+{% endfor %}
+</div>
+{% endif %}
+{% endwith %}
 
-    <div class="dashboard-layout">
-        
-        <aside class="sidebar" id="sidebar">
+<div class="dashboard-layout">
+    
+    <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="assets/img/logo-black.png" alt="Professores ensinando"> 
+                <img src="{{ url_for('static', filename='img/logo-black.png') }}" alt="Professores ensinando"> 
                 <span class="title">PC Teacher</span>
             </div>
-            
-            <nav class="sidebar-nav">
-                <a href="perfil.html" class="sidebar-item">
-                    <i class="fas fa-user-circle"></i> Meu Perfil
-                </a>
-                <a href="modulos.html" class="sidebar-item active">
-                    <i class="fas fa-book"></i> Módulos
-                </a>
-                <a href="progresso.html" class="sidebar-item">
-                    <i class="fas fa-chart-line"></i> Meu Progresso
-                </a>
-                <a href="certificado.html" class="sidebar-item">
-                    <i class="fas fa-certificate"></i> Certificado
-                </a>
-            </nav>
-            
-            <a href="index.html" class="sidebar-footer">
-                <i class="fas fa-sign-out-alt"></i> Sair
+        
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('perfil') }}" class="sidebar-item">
+                <i class="fas fa-user-circle"></i> Meu Perfil
             </a>
-        </aside>
+            <a href="{{ url_for('modulos') }}" class="sidebar-item active">
+                <i class="fas fa-book"></i> Módulos
+            </a>
+            <a href="{{ url_for('progresso') }}" class="sidebar-item">
+                <i class="fas fa-chart-line"></i> Meu Progresso
+            </a>
+            <a href="{{ url_for('certificado') }}" class="sidebar-item">
+                <i class="fas fa-certificate"></i> Certificado
+            </a>
+        </nav>
+        
+        <a href="{{ url_for('logout') }}" class="sidebar-footer">
+            <i class="fas fa-sign-out-alt"></i> Sair
+        </a>
+    </aside>
 
-        <main class="main-content">
-            <h1>Pensamento Computacional - Módulos</h1>
-
-            <div class="course-card">
-                <div class="course-info">
-                    <h2>Decomposição</h2>
-                    <p>É a habilidade de quebrar grandes problemas em partes menores e mais simples, tornando a solução mais fácil e eficiente.</p>
+    <main class="main-content">
+        <h1 class="text-3xl font-bold mb-8 text-gray-800">Pensamento Computacional - Módulos</h1>
+        
+        <!-- INÍCIO DO LOOP DINÂMICO DE MÓDULOS -->
+        {% for module in modulos %}
+            <!-- A classe locked-card é aplicada se 'is_unlocked' for Falso (vindo do Python) -->
+            <div class="course-card flex items-center justify-between p-4 mb-4 rounded-xl shadow-lg transition duration-300 {{ 'locked-card' if not module.is_unlocked else 'unlocked-card' }}">
+                
+                <div class="course-info flex-grow pr-4">
+                    <h2 class="text-xl font-semibold text-gray-900">{{ module.title }}</h2>
+                    <!-- A descrição agora é puxada do MODULO_CONFIG no Python -->
+                    <p class="text-gray-500 mt-1">{{ module.description }}</p>
                 </div>
                 
-                <div class="course-progress">
-                    <p class="progress-status">Iniciar</p>
-                    <a href="conteudo-decomposicao.html" class="btn-continue">começar</a>
+                <div class="course-progress flex items-center space-x-3">
+                    
+                    {% if module.is_unlocked %}
+                        
+                        {% if module.is_completed %}
+                            <!-- MÓDULO CONCLUÍDO -->
+                            <i class="fas fa-check-circle text-green-500 text-2xl"></i>
+                            <a href="{{ url_for('conteudo_aula', module_slug=module.slug) }}" class="btn-continue concluded">Revisar</a>
+                        {% else %}
+                            <!-- MÓDULO DESBLOQUEADO (Pronto para Iniciar/Continuar) -->
+                            <a href="{{ url_for('conteudo_aula', module_slug=module.slug) }}" class="btn-continue active">
+                                <i class="fas fa-arrow-right"></i> 
+                                {% if module.order == 1 %} Iniciar {% else %} Continuar {% endif %}
+                            </a>
+                        {% endif %}
+                        
+                    {% else %}
+                        <!-- MÓDULO BLOQUEADO -->
+                        <i class="fas fa-lock text-gray-400 text-2xl"></i> 
+                        <span class="btn-continue locked">Bloqueado</span>
+                    {% endif %}
+                    
                 </div>
             </div>
-
-            <div class="course-card">
-                <div class="course-info">
-                    <h2>Reconhecimento de Padrões</h2>
-                    <p>É a identificação de semelhanças e repetições em problemas, o que economiza tempo e permite a reutilização de soluções.</p>
-                </div>
-                 
-                <div class="course-progress">
-                    <i class="fas fa-lock uncompleted"></i> 
-                    <p class="progress-status" style="color: #666;">Bloqueado</p>
-                    <a href="#" class="btn-continue">Bloqueado</a>
-                </div>
-            </div>
-
-            <div class="course-card">
-                <div class="course-info">
-                    <h2>Abstração</h2>
-                    <p>Você aprende a focar nas informações importantes, ignorando detalhes irrelevantes para facilitar a criação de modelos e representações.</p>
-                </div>
-                 
-                <div class="course-progress">
-                    <i class="fas fa-lock uncompleted"></i> 
-                    <p class="progress-status" style="color: #666;">Bloqueado</p>
-                    <a href="#" class="btn-continue">Bloqueado</a>
-                </div>
-            </div>
-
-            <div class="course-card">
-                <div class="course-info">
-                    <h2>Algoritmos</h2>
-                    <p>São as sequências de passos lógicos e organizados que permitem resolver problemas ou executar uma tarefa, de forma estruturada e replicável.</p>
-                </div>
-                 
-                <div class="course-progress">
-                    <i class="fas fa-lock uncompleted"></i> 
-                    <p class="progress-status" style="color: #666;">Bloqueado</p>
-                    <a href="#" class="btn-continue">Bloqueado</a>
-                </div>
-            </div>
-
-        </main>
-    </div>
+        {% endfor %}
+        <!-- FIM DO LOOP DINÂMICO DE MÓDULOS -->
     
+    </main>
+</div>
+
+
 </body>
 </html>
