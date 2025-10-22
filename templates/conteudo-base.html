@@ -156,6 +156,10 @@
             .sidebar-header .title {
                 display: none;
             }
+            /* Esconde o indicador de progresso em mobile para manter a sidebar limpa */
+            .sidebar-progress-indicator {
+                display: none; 
+            }
         }
     </style>
 </head>
@@ -163,13 +167,32 @@
 
     <div class="min-h-screen"> 
         
-        <!-- Sidebar: w-full em mobile, w-72 em desktop (largura definida pelo CSS) -->
         <aside class="sidebar w-full lg:w-72" id="sidebar">
             <div class="sidebar-header">
                 <img src="{{ url_for('static', filename='img/logo-black.png') }}" alt="Professores ensinando"> 
                 <span class="title">PC Teacher</span>
             </div>
             
+            {# ========================================================= #}
+            {# NOVO INDICADOR DE PROGRESSO GERAL NA SIDEBAR #}
+            {# A variável 'progresso' era buscada aqui, mas agora usamos 'progresso_data' #}
+            {# O {% if progresso_data %} garante que não haverá erro UndefinedError #}
+            {% if progresso_data and user %}
+            <div class="sidebar-progress-indicator p-4 text-white">
+                <p class="text-sm font-semibold mb-1">Olá, {{ user.nome.split(' ')[0] }}!</p>
+                <p class="text-xs text-gray-300 mb-2">Progresso Geral:</p>
+                <div class="w-full bg-gray-600 rounded-full h-2.5">
+                    <div class="bg-secondary-green h-2.5 rounded-full" 
+                        style="width: {{ progresso_data.overall_percent }}%">
+                    </div>
+                </div>
+                <p class="text-xs mt-1 text-gray-300 font-bold text-right">
+                    {{ progresso_data.overall_percent }}%
+                </p>
+            </div>
+            {% endif %}
+            {# ========================================================= #}
+
             <nav class="sidebar-nav">
                 <a href="{{ url_for('perfil') }}" class="sidebar-item">
                     <i class="fas fa-user-circle"></i> Meu Perfil
@@ -190,7 +213,6 @@
             </a>
         </aside>
 
-        <!-- Conteúdo principal: lg:ml-72 cria a margem. p-4/p-8 para padding reduzido. -->
         <main class="main-content lg:ml-72 p-4 lg:p-8 flex-grow w-full space-y-6">
             <h1 class="text-3xl font-bold text-gray-800 mb-6">{% block content_title %}{% endblock %}</h1>
             
@@ -211,10 +233,8 @@
                 {% endif %}
             {% endwith %}
 
-            <!-- Conteúdo específico da página -->
             {% block content %}{% endblock %}
             
-            <!-- Botão de Finalização, se aplicável -->
             {% block finish_button %}{% endblock %}
 
         </main>

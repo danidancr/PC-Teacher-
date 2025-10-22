@@ -136,7 +136,6 @@ def requires_auth(func):
         return func(*args, **kwargs)
     return wrapper
 
-# Funções de Cálculo de Progresso (Centralizadas para reuso)
 def calculate_progress(progresso_db):
     """Calcula todas as métricas de progresso do curso e retorna a lista de módulos."""
     
@@ -149,35 +148,31 @@ def calculate_progress(progresso_db):
     
     dynamic_modules = []
     
-    # Rastreia se o módulo anterior foi completado para desbloquear o próximo
+    # Rastreia se o módulo anterior foi completado (começa como True para desbloquear o primeiro)
     is_previous_completed = True 
 
     for module_config in MODULO_CONFIG:
         db_field = module_config['field']
         is_completed = getattr(progresso_db, db_field, False)
         
-        # Lógica de Desbloqueio (é desbloqueado se o anterior foi completado)
-        is_unlocked = is_previous_completed
+        # 1. ESTABELECE O STATUS DE DESBLOQUEIO PARA O MÓDULO ATUAL
+        is_unlocked_for_current_module = is_previous_completed
 
-        # Se este módulo foi concluído, ele conta e o próximo será desbloqueado
+        # 2. ATUALIZA o status para a PRÓXIMA iteração
+        is_previous_completed = is_completed
+
+        # 3. Contadores
         if is_completed:
             completed_modules += 1
             completed_lessons += module_config['lessons']
             completed_exercises += module_config['exercises']
-            is_previous_completed = True # Garante que o próximo será desbloqueado
-        else:
-            # Se não foi concluído, o próximo módulo DEVE ficar bloqueado
-            is_previous_completed = False
 
         dynamic_modules.append({
-            # DADOS ESTÁTICOS DO MODULO_CONFIG
             'title': module_config['title'],
             'description': module_config['description'],
             'slug': module_config['slug'],
             'order': module_config['order'],
-            
-            # DADOS DINÂMICOS DE PROGRESSO
-            'is_unlocked': is_unlocked,
+            'is_unlocked': is_unlocked_for_current_module,
             'is_completed': is_completed,
             'lessons': module_config['lessons'],
             'exercises': module_config['exercises'],
@@ -193,9 +188,8 @@ def calculate_progress(progresso_db):
         'total_lessons': total_lessons,
         'completed_exercises': completed_exercises,
         'total_exercises': total_exercises,
-        'modules': dynamic_modules # A lista que você precisa no template
+        'modules': dynamic_modules 
     }
-
 
 # =========================================================
 # 4. ROTAS DE AUTENTICAÇÃO
@@ -273,6 +267,8 @@ def logout():
     session.pop('usuario_id', None)
     flash('Você saiu da sua conta.', 'info')
     return redirect(url_for('index'))
+
+
 
 # =========================================================
 # 5. ROTAS DE ÁREA RESTRITA E PERFIL (GET/POST)
@@ -359,15 +355,15 @@ def perfil():
 @requires_auth
 def progresso():
     usuario = usuario_logado()
-    progresso_db = usuario.progresso # Progresso do DB
+    progresso_db = usuario.progresso 
     
-    # OBS: progresso_data.modules não é usado aqui, mas geramos para consistência
+    # CHAMA A FUNÇÃO DE CÁLCULO
     progresso_data = calculate_progress(progresso_db) 
 
     context = {
         'user': usuario,
         'title': "Meu Progresso",
-        'progresso_data': progresso_data
+        'progresso_data': progresso_data 
     }
     
     return render_template('progresso.html', **context)
@@ -530,8 +526,10 @@ def generate_latex_certificate(nome_completo, data_conclusao):
 \\end{{document}}
 """
 
+# =========================================================
+# 7. ROTAS DE INFORMAÇÕES
+# =========================================================
 
-# 7. ROTAS DE CONTEÚDO DE CURSO - TELAS DE APRESENTAÇÃO (Rotas estáticas, mas mantidas)
 @app.route('/infor-curso-decomposicao')
 def infor_curso_decomposicao():
     usuario = usuario_logado()
@@ -552,113 +550,121 @@ def infor_curso_algoritmo():
     usuario = usuario_logado()
     return render_template('infor-curso-algoritmo.html', user=usuario)
 
-
 # =========================================================
-# 7. ROTAS DE CONTEÚDO DE CURSO (Protegidas por autenticação)
+# 8. ROTAS DE CONTEÚDO DE CURSO (Protegidas por autenticação)
 # =========================================================
 
-# ROTA CORRIGIDA PARA PASSAR A LISTA 'modulos'
 @app.route('/modulos')
 @requires_auth
 def modulos():
     usuario = usuario_logado()
     progresso = usuario.progresso
     
-    # 1. Calcula o progresso, que agora retorna o dicionário com a chave 'modules'
+    # 1. Calcula o progresso e obtém os dados dinâmicos
     progresso_data = calculate_progress(progresso)
     
-    # 2. EXTRAI a lista de módulos do dicionário gerado
+    # 2. Extrai a lista de módulos com status de desbloqueio/conclusão
     modulos_list = progresso_data.get('modules', []) 
 
-    # 3. Passa a lista sob o nome 'modulos', como o template espera
+    # 3. Passa a lista e o progresso_data para o template
     return render_template('modulos.html', user=usuario, modulos=modulos_list, progresso_data=progresso_data)
 
-
-# Rota para finalizar um módulo (chamada via formulário POST)
 @app.route('/concluir-modulo/<string:modulo_nome>', methods=['POST'])
 @requires_auth
 def concluir_modulo(modulo_nome):
     usuario = usuario_logado()
     progresso = usuario.progresso
     
-    # Mapeamento do nome da rota/identificador para o campo do DB
+    # Mapeamento do nome da rota/identificador (SLUG) para o campo do DB
     modulo_map = {
         'introducao': 'introducao_concluido',
         'decomposicao': 'decomposicao_concluido',
-        'rec-padrao': 'reconhecimento_padroes_concluido', # Corrigido o slug para 'rec-padrao'
+        'rec-padrao': 'reconhecimento_padroes_concluido', 
         'abstracao': 'abstracao_concluido',
         'algoritmo': 'algoritmo_concluido',
-        'projeto-final': 'projeto_final_concluido', # Corrigido o slug para 'projeto-final'
+        'projeto-final': 'projeto_final_concluido',
     }
     
+    # 1. TENTA OBTER O NOME DO CAMPO DO BANCO DE DADOS
     db_field = modulo_map.get(modulo_nome)
     
     if db_field:
+        # 2. ATUALIZA o campo no objeto de progresso do usuário
         try:
-            # 1. Altera o status do campo no objeto progresso
-            setattr(progresso, db_field, True)
+            # Use setattr para definir a flag de conclusão
+            setattr(progresso, db_field, True) 
             
-            # 2. Salva a alteração no banco
-            db.session.commit()
+            # Tenta comitar a mudança no banco de dados (se estiver usando SQLAlchemy/SQLite)
+            db.session.commit() 
+            flash(f'Módulo "{modulo_nome.replace("-", " ").title()}" concluído com sucesso!', 'success')
             
-            # Formata o nome para a mensagem
-            # Tenta encontrar a configuração pelo slug para pegar o título
-            config_item = next((m for m in MODULO_CONFIG if m['slug'] == modulo_nome), None)
-            display_name = config_item['title'].split('. ')[1] if config_item else "Módulo"
-            
-            flash(f'Módulo "{display_name}" concluído com sucesso! O próximo foi desbloqueado.', 'success')
         except Exception as e:
+            # Em caso de erro no DB, faz rollback e notifica
             db.session.rollback()
-            flash(f'Erro ao concluir o módulo: {str(e)}', 'danger')
+            flash(f'Erro ao concluir o módulo: {e}', 'danger')
             
+        # 3. RETORNO OBRIGATÓRIO APÓS PROCESSAMENTO BEM-SUCEDIDO OU FALHO
+        # Redireciona para a página de módulos
+        return redirect(url_for('modulos'))
+        
     else:
-        flash('Módulo inválido.', 'danger')
-        
-    # Redireciona sempre para a lista de módulos
-    return redirect(url_for('modulos'))
+        # 4. RETORNO OBRIGATÓRIO SE O SLUG FOR INVÁLIDO OU NÃO ENCONTRADO
+        flash('Erro: Módulo não encontrado.', 'danger')
+        return redirect(url_for('modulos'))
 
-
-# ROTA CORRIGIDA: Ajustando a rota de conteúdo para garantir o acesso sequencial correto
-@app.route('/conteudo-aula/<string:module_slug>')
+@app.route('/conteudo-introducao')
 @requires_auth
-def conteudo_aula(module_slug):
-    usuario = usuario_logado()
-    progresso = usuario.progresso
-    
-    # 1. Encontra a configuração do módulo
-    module_config = next((m for m in MODULO_CONFIG if m['slug'] == module_slug), None)
-    
-    if not module_config:
-        flash("Módulo não encontrado.", 'danger')
-        return redirect(url_for('modulos'))
-        
-    # 2. Verifica o progresso e desbloqueio
-    progresso_data = calculate_progress(progresso)
-    current_module_data = next((m for m in progresso_data['modules'] if m['slug'] == module_slug), None)
-    
-    if not current_module_data:
-        # Se for um slug válido, mas por algum motivo o calculate_progress falhou em retornar
-        flash("Erro interno ao carregar dados de progresso do módulo.", 'danger')
-        return redirect(url_for('modulos'))
-    
-    # Lógica de Bloqueio Aprimorada:
-    # Se NÃO for o primeiro módulo (order > 1) E o status de is_unlocked for Falso,
-    # significa que o módulo anterior não foi concluído.
-    if current_module_data['order'] != 1 and not current_module_data['is_unlocked']:
-        flash(f"O módulo '{module_config['title']}' está bloqueado. Complete o anterior primeiro.", 'warning')
-        return redirect(url_for('modulos'))
-        
-    # 3. Renderiza o template de conteúdo com base no slug
-    template_name = f'conteudo-{module_slug}.html'
-    
-    # Este é um placeholder, você precisa garantir que esses templates existam!
-    try:
-        return render_template(template_name, user=usuario, module=current_module_data)
-    except Exception:
-        # Fallback caso o template específico não exista
-        flash(f"Template de conteúdo para '{module_slug}' não encontrado. Verifique o arquivo {template_name}.", 'danger')
-        return redirect(url_for('modulos'))
+def conteudo_introducao(): 
+    # Módulo 1 não tem pré-requisito
+    return render_template('conteudo-introducao.html', user=usuario_logado(), progresso=usuario_logado().progresso)
 
+@app.route('/conteudo-decomposicao')
+@requires_auth
+def conteudo_decomposicao():
+    usuario = usuario_logado()
+    if not usuario.progresso.introducao_concluido:
+        flash('Você deve completar o módulo de Introdução primeiro.', 'warning')
+        return redirect(url_for('modulos'))
+    return render_template('conteudo-decomposicao.html', user=usuario, progresso=usuario.progresso)
+
+@app.route('/conteudo-rec-padrao')
+@requires_auth
+def conteudo_rec_padrao():
+    usuario = usuario_logado()
+    if not usuario.progresso.decomposicao_concluido:
+        flash('Você deve completar o módulo de Decomposição primeiro.', 'warning')
+        return redirect(url_for('modulos'))
+    return render_template('conteudo-rec-padrao.html', user=usuario, progresso=usuario.progresso)
+
+@app.route('/conteudo-abstracao')
+@requires_auth
+def conteudo_abstracao():
+    usuario = usuario_logado()
+    # Pré-requisito: Reconhecimento de Padrões (Módulo 3)
+    if not usuario.progresso.reconhecimento_padroes_concluido: 
+        flash('Você deve completar o módulo de Reconhecimento de Padrões primeiro.', 'warning')
+        return redirect(url_for('modulos'))
+    return render_template('conteudo-abstracao.html', user=usuario, progresso=usuario.progresso)
+
+@app.route('/conteudo-algoritmo')
+@requires_auth
+def conteudo_algoritmo():
+    usuario = usuario_logado()
+    # Pré-requisito: Abstração (Módulo 4)
+    if not usuario.progresso.abstracao_concluido: 
+        flash('Você deve completar o módulo de Abstração primeiro.', 'warning')
+        return redirect(url_for('modulos'))
+    return render_template('conteudo-algoritmo.html', user=usuario, progresso=usuario.progresso)
+
+@app.route('/conteudo-projeto-final')
+@requires_auth
+def conteudo_projeto_final():
+    usuario = usuario_logado()
+    # Pré-requisito: Algoritmos (Módulo 5)
+    if not usuario.progresso.algoritmo_concluido: 
+        flash('Você deve completar o módulo de Algoritmos primeiro.', 'warning')
+        return redirect(url_for('modulos'))
+    return render_template('conteudo-projeto-final.html', user=usuario, progresso=usuario.progresso)
 
 # =========================================================
 # 8. EXECUÇÃO

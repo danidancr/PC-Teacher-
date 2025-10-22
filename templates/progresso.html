@@ -75,28 +75,44 @@
             </div>
 
             <h2>Progresso Detalhado por Módulo</h2>
-            
+
             <div class="module-progress-list">
                 
                 {% for module in progresso_data.modules %}
-                {% set status_class = 'status-completed' if module.status == 'completed' else ('status-pending' if module.status == 'pending' else 'status-not-started') %}
-                {% set status_text = 'Concluído' if module.status == 'completed' else ('Desbloqueado' if module.status == 'pending' else 'Bloqueado') %}
-                {% set bar_color = '#4CAF50' if module.status == 'completed' else ('#007BFF' if module.status == 'pending' else '#ccc') %}
-                {% set percent_text_color = '#333' if module.status != 'not-started' else '#999' %}
+                
+                {# 1. Define o Status e Cores com base nas chaves do Python: is_completed e is_unlocked #}
+                {% set is_completed = module.is_completed %}
+                {% set is_unlocked = module.is_unlocked %}
+                
+                {% if is_completed %}
+                    {% set percent = 100 %}
+                    {% set status_class = 'status-completed' %}
+                    {% set status_text = 'Concluído' %}
+                    {% set bar_color = '#4CAF50' %} {# Verde #}
+                    {% set percent_text_color = '#333' %}
+                {% elif is_unlocked %}
+                    {% set percent = 50 %} {# Exibe 50% para "Em Andamento/Desbloqueado" #}
+                    {% set status_class = 'status-pending' %}
+                    {% set status_text = 'Desbloqueado' %}
+                    {% set bar_color = '#007BFF' %} {# Azul #}
+                    {% set percent_text_color = '#333' %}
+                {% else %}
+                    {% set percent = 0 %}
+                    {% set status_class = 'status-locked' %} {# Corrigido para status-locked para melhor CSS #}
+                    {% set status_text = 'Bloqueado' %}
+                    {% set bar_color = '#E9ECEF' %} {# Cinza Claro #}
+                    {% set percent_text_color = '#999' %}
+                {% endif %}
                 
                 <div class="progress-item">
                     <div class="item-info">
-                        <!-- Nome dinâmico do módulo -->
-                        <h3>{{ module.name }}</h3>
+                        <h3>{{ module.title }}</h3>
                         <p>{{ module.lessons }} Aulas, {{ module.exercises }} Exercícios</p>
                     </div>
                     <div class="progress-bar-container">
-                        <!-- Barra de progresso dinâmica -->
-                        <div class="progress-bar" style="width: {{ module.percent }}%; background-color: {{ bar_color }};"></div>
+                        <div class="progress-bar" style="width: {{ percent }}%; background-color: {{ bar_color }};"></div>
                     </div>
-                    <!-- Porcentagem dinâmica -->
-                    <div class="progress-percentage" style="color: {{ percent_text_color }};">{{ module.percent }}%</div>
-                    <!-- Tag de status dinâmica -->
+                    <div class="progress-percentage" style="color: {{ percent_text_color }};">{{ percent }}%</div>
                     <div class="status-tag {{ status_class }}">{{ status_text }}</div>
                 </div>
                 {% endfor %}
