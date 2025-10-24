@@ -29,6 +29,16 @@
         <main class="main-content">
             <h1>Meus Módulos</h1>
 
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flashes-container">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
             <div class="modules-grid">
                 
                 {# O loop itera sobre a lista 'modulos' que o Flask passa, que contém o status de desbloqueio #}
@@ -47,15 +57,15 @@
                     {# Lógica de Status e Botão #}
                     {% if is_completed %}
                         <div class="status-tag status-completed">Concluído</div>
-                        <button class="btn disabled">✔ Finalizado</button>
+                        {# O link para módulos concluídos deve ir para o conteúdo para revisão #}
+                        <a href="{{ url_for('conteudo_dinamico', modulo_slug=module.slug) }}" class="btn primary">Revisar</a>
                     {% elif is_unlocked %}
                         {# Módulo desbloqueado mas não concluído #}
-                        {% set url_content = 'conteudo_' ~ module.slug.replace('-', '_') %}
-                        <a href="{{ url_for(url_content) }}" class="btn primary">Iniciar</a>
+                        {# CHAMA A ROTA DINÂMICA 'conteudo_dinamico' e passa o SLUG #}
+                        <a href="{{ url_for('conteudo_dinamico', modulo_slug=module.slug) }}" class="btn primary">Iniciar</a>
                     {% else %}
                         {# Módulo bloqueado #}
-                        <div class="status-tag status-locked">Bloqueado</div>
-                        <button class="btn disabled">🔒 Bloqueado</button>
+                        <div class="status-tag status-locked">🔒 Bloqueado</div>
                     {% endif %}
                     
                 </div>
@@ -66,6 +76,33 @@
     </div>
 
     <style>
+        /* CSS para as mensagens de Flash */
+        .flashes-container {
+            margin-bottom: 20px;
+        }
+        .alert {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .alert-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* O resto do CSS original */
         .modules-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

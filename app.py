@@ -73,6 +73,7 @@ MODULO_CONFIG = [
         'title': '1. Introdução ao Pensamento Computacional',
         'field': 'introducao_concluido',
         'slug': 'introducao',
+        'template': 'conteudo-introducao.html', # NOVO CAMPO: nome do template
         'order': 1,
         'description': 'Entenda o que é o Pensamento Computacional, seus pilares e por que ele é crucial para o futuro.',
         'lessons': 2, 'exercises': 1, 'dependency_field': None
@@ -81,6 +82,7 @@ MODULO_CONFIG = [
         'title': '2. Decomposição',
         'field': 'decomposicao_concluido',
         'slug': 'decomposicao',
+        'template': 'conteudo-decomposicao.html', # NOVO CAMPO
         'order': 2,
         'description': 'Aprenda a quebrar problemas complexos em partes menores e gerenciáveis.',
         'lessons': 2, 'exercises': 1, 'dependency_field': 'introducao_concluido'
@@ -89,6 +91,7 @@ MODULO_CONFIG = [
         'title': '3. Reconhecimento de Padrões',
         'field': 'reconhecimento_padroes_concluido',
         'slug': 'rec-padrao',
+        'template': 'conteudo-rec-padrao.html', # NOVO CAMPO
         'order': 3,
         'description': 'Identifique similaridades e tendências para simplificar a resolução de problemas.',
         'lessons': 2, 'exercises': 1, 'dependency_field': 'decomposicao_concluido'
@@ -97,6 +100,7 @@ MODULO_CONFIG = [
         'title': '4. Abstração',
         'field': 'abstracao_concluido',
         'slug': 'abstracao',
+        'template': 'conteudo-abstracao.html', # NOVO CAMPO
         'order': 4,
         'description': 'Foque apenas nas informações importantes, ignorando detalhes irrelevantes.',
         'lessons': 2, 'exercises': 1, 'dependency_field': 'reconhecimento_padroes_concluido'
@@ -105,6 +109,7 @@ MODULO_CONFIG = [
         'title': '5. Algoritmos',
         'field': 'algoritmo_concluido',
         'slug': 'algoritmo',
+        'template': 'conteudo-algoritmo.html', # NOVO CAMPO
         'order': 5,
         'description': 'Desenvolva sequências lógicas e organizadas para resolver problemas de forma eficaz.',
         'lessons': 2, 'exercises': 1, 'dependency_field': 'abstracao_concluido'
@@ -113,11 +118,16 @@ MODULO_CONFIG = [
         'title': '6. Projeto Final',
         'field': 'projeto_final_concluido',
         'slug': 'projeto-final',
+        'template': 'conteudo-projeto-final.html', # NOVO CAMPO
         'order': 6,
         'description': 'Aplique todos os pilares do PC para solucionar um desafio prático de sala de aula.',
         'lessons': 1, 'exercises': 0, 'dependency_field': 'algoritmo_concluido'
     },
 ]
+
+# DICIONÁRIO AUXILIAR PARA ACESSO RÁPIDO AO MÓDULO POR SLUG (Otimização)
+MODULO_BY_SLUG = {m['slug']: m for m in MODULO_CONFIG}
+
 
 def usuario_logado():
     """Retorna o objeto Usuario logado ou None."""
@@ -148,20 +158,22 @@ def calculate_progress(progresso_db):
     
     dynamic_modules = []
     
-    # Rastreia se o módulo anterior foi completado (começa como True para desbloquear o primeiro)
-    is_previous_completed = True 
-
     for module_config in MODULO_CONFIG:
         db_field = module_config['field']
         is_completed = getattr(progresso_db, db_field, False)
         
-        # 1. ESTABELECE O STATUS DE DESBLOQUEIO PARA O MÓDULO ATUAL
-        is_unlocked_for_current_module = is_previous_completed
+        # Lógica de Desbloqueio (BASEADA NA DEPENDÊNCIA explícita)
+        dependency_field = module_config.get('dependency_field')
+        
+        if dependency_field is None:
+            # Módulo 1 (Introdução) é sempre desbloqueado
+            is_unlocked_for_current_module = True
+        else:
+            # Desbloqueado se o módulo de dependência estiver concluído no banco de dados
+            dependency_is_completed = getattr(progresso_db, dependency_field, False)
+            is_unlocked_for_current_module = dependency_is_completed 
 
-        # 2. ATUALIZA o status para a PRÓXIMA iteração
-        is_previous_completed = is_completed
-
-        # 3. Contadores
+        # Contadores
         if is_completed:
             completed_modules += 1
             completed_lessons += module_config['lessons']
@@ -192,7 +204,8 @@ def calculate_progress(progresso_db):
     }
 
 # =========================================================
-# 4. ROTAS DE AUTENTICAÇÃO
+# 4. ROTAS DE AUTENTICAÇÃO (Sem alterações)
+# ... (cadastro, login, logout)
 # =========================================================
 
 @app.route('/cadastro', methods=['GET', 'POST'])
@@ -271,7 +284,8 @@ def logout():
 
 
 # =========================================================
-# 5. ROTAS DE ÁREA RESTRITA E PERFIL (GET/POST)
+# 5. ROTAS DE ÁREA RESTRITA E PERFIL (GET/POST) (Sem alterações)
+# ... (index, dashboard, perfil, progresso)
 # =========================================================
 
 @app.route('/')
@@ -369,7 +383,8 @@ def progresso():
     return render_template('progresso.html', **context)
 
 # =========================================================
-# 6. ROTAS DE CERTIFICADO (Gerando o documento LaTeX)
+# 6. ROTAS DE CERTIFICADO (Gerando o documento LaTeX) (Sem alterações)
+# ... (certificado, gerar_certificado, generate_latex_certificate)
 # =========================================================
 
 @app.route('/certificado')
@@ -460,24 +475,24 @@ def generate_latex_certificate(nome_completo, data_conclusao):
 
 % Comando para a linha de assinatura
 \\newcommand{{\\assinatura}}[2]{{
-    \\begin{{minipage}}[t]{{0.45\\textwidth}}
-        \\centering
-        \\vspace{{1cm}}
-        {{\\color{{CorDestaque}}\\rule{{\\linewidth}}{{0.5pt}}}} % Linha dourada
-        \\small{{\\color{{CorPrincipal}}\\textbf{{#1}}}} \\\\
-        \\tiny{{\\color{{CorPrincipal}}\\textit{{#2}}}}
-    \\end{{minipage}}
+    \\begin{{minipage}}[t]{{0.45\\textwidth}}
+        \\centering
+        \\vspace{{1cm}}
+        {{\\color{{CorDestaque}}\\rule{{\\linewidth}}{{0.5pt}}}} % Linha dourada
+        \\small{{\\color{{CorPrincipal}}\\textbf{{#1}}}} \\\\
+        \\tiny{{\\color{{CorPrincipal}}\\textit{{#2}}}}
+    \\end{{minipage}}
 }}
 
 \\begin{{document}}
 \\begin{{tikzpicture}}[overlay, remember picture]
-    % Desenha o fundo preto/escuro que preenche toda a página
-    \\fill[fill=CorFundo] (current page.south west) rectangle (current page.north east);
-    
-    % Desenha a borda decorativa (retângulo mais interno, estilo moldura)
-    \\draw[color=CorPrincipal, line width=8pt]
-        ([xshift=5mm, yshift=5mm]current page.south west)
-        rectangle ([xshift=-5mm, yshift=-5mm]current page.north east);
+    % Desenha o fundo preto/escuro que preenche toda a página
+    \\fill[fill=CorFundo] (current page.south west) rectangle (current page.north east);
+    
+    % Desenha a borda decorativa (retângulo mais interno, estilo moldura)
+    \\draw[color=CorPrincipal, line width=8pt]
+        ([xshift=5mm, yshift=5mm]current page.south west)
+        rectangle ([xshift=-5mm, yshift=-5mm]current page.north east);
 \\end{{tikzpicture}}
 
 \\begin{{center}}
@@ -506,8 +521,8 @@ def generate_latex_certificate(nome_completo, data_conclusao):
 
 % Conteúdo
 \\parbox{{0.8\\textwidth}}{{\\centering
-    concluiu com êxito o curso de \\textbf{{Pensamento Computacional}} realizado
-    na plataforma \\textbf{{PC Teacher}}, com carga horária total de \\textbf{{40 horas}}.
+    concluiu com êxito o curso de \\textbf{{Pensamento Computacional}} realizado
+    na plataforma \\textbf{{PC Teacher}}, com carga horária total de \\textbf{{40 horas}}.
 }}
 
 \\vspace{{1.5cm}}
@@ -526,10 +541,11 @@ def generate_latex_certificate(nome_completo, data_conclusao):
 \\end{{document}}
 """
 
-# =========================================================
-# 7. ROTAS DE INFORMAÇÕES
-# =========================================================
 
+# =========================================================
+# 7. ROTAS DE INFORMAÇÕES (Sem alterações)
+# ... (infor-curso-decomposicao, etc.)
+# =========================================================
 @app.route('/infor-curso-decomposicao')
 def infor_curso_decomposicao():
     usuario = usuario_logado()
@@ -549,6 +565,7 @@ def infor_curso_abstracao():
 def infor_curso_algoritmo():
     usuario = usuario_logado()
     return render_template('infor-curso-algoritmo.html', user=usuario)
+
 
 # =========================================================
 # 8. ROTAS DE CONTEÚDO DE CURSO (Protegidas por autenticação)
@@ -575,99 +592,81 @@ def concluir_modulo(modulo_nome):
     usuario = usuario_logado()
     progresso = usuario.progresso
     
-    # Mapeamento do nome da rota/identificador (SLUG) para o campo do DB
-    modulo_map = {
-        'introducao': 'introducao_concluido',
-        'decomposicao': 'decomposicao_concluido',
-        'rec-padrao': 'reconhecimento_padroes_concluido', 
-        'abstracao': 'abstracao_concluido',
-        'algoritmo': 'algoritmo_concluido',
-        'projeto-final': 'projeto_final_concluido',
-    }
+    # CORREÇÃO CRÍTICA: Normaliza o nome do módulo (substitui '_' por '-')
+    # para garantir que o slug corresponde ao MODULO_CONFIG.
+    slug_normalizado = modulo_nome.replace('_', '-')
     
-    # 1. TENTA OBTER O NOME DO CAMPO DO BANCO DE DADOS
-    db_field = modulo_map.get(modulo_nome)
+    # Usa o dicionário auxiliar MODULO_BY_SLUG para obter as informações
+    modulo_config = MODULO_BY_SLUG.get(slug_normalizado) # <-- Usa o SLUG NORMALIZADO
     
-    if db_field:
-        # 2. ATUALIZA o campo no objeto de progresso do usuário
-        try:
-            # Use setattr para definir a flag de conclusão
-            setattr(progresso, db_field, True) 
-            
-            # Tenta comitar a mudança no banco de dados (se estiver usando SQLAlchemy/SQLite)
-            db.session.commit() 
-            flash(f'Módulo "{modulo_nome.replace("-", " ").title()}" concluído com sucesso!', 'success')
-            
-        except Exception as e:
-            # Em caso de erro no DB, faz rollback e notifica
-            db.session.rollback()
-            flash(f'Erro ao concluir o módulo: {e}', 'danger')
-            
-        # 3. RETORNO OBRIGATÓRIO APÓS PROCESSAMENTO BEM-SUCEDIDO OU FALHO
-        # Redireciona para a página de módulos
+    if not modulo_config:
+        # Se ainda falhar, exibe o nome original que causou o erro
+        flash(f'Erro: Módulo "{modulo_nome}" não encontrado no mapeamento.', 'danger')
+        return redirect(url_for('modulos'))
+
+    db_field = modulo_config['field']
+    
+    # 1. VERIFICA SE O MÓDULO ANTERIOR ESTÁ CONCLUÍDO ANTES DE PERMITIR A CONCLUSÃO
+    # (Prevenção contra requisições POST diretas)
+    dependency_field = modulo_config.get('dependency_field')
+    if dependency_field and not getattr(progresso, dependency_field, False):
+         flash('Você deve completar o módulo anterior primeiro para registrar a conclusão deste.', 'warning')
+         return redirect(url_for('modulos'))
+
+    # 2. ATUALIZA o campo no objeto de progresso do usuário
+    try:
+        # Define a flag de conclusão como True
+        setattr(progresso, db_field, True) 
+        
+        # Tenta comitar a mudança no banco de dados
+        db.session.commit() 
+        
+        # Encontra o próximo módulo para sugerir o redirecionamento
+        proximo_modulo_order = modulo_config['order'] + 1
+        proximo_modulo = next((m for m in MODULO_CONFIG if m['order'] == proximo_modulo_order), None)
+        
+        if proximo_modulo:
+            flash(f'Módulo "{modulo_config["title"]}" concluído com sucesso! Prossiga para o próximo: {proximo_modulo["title"]}', 'success')
+        else:
+             flash(f'Módulo "{modulo_config["title"]}" concluído com sucesso! Você finalizou o curso!', 'success')
+        
+    except Exception as e:
+        # Em caso de erro no DB, faz rollback e notifica
+        db.session.rollback()
+        flash(f'Erro ao concluir o módulo: {e}', 'danger')
+        
+    return redirect(url_for('modulos'))
+
+
+# ROTA DINÂMICA (Não precisa de alteração, pois já usa o slug do MODULO_CONFIG)
+@app.route('/conteudo/<string:modulo_slug>')
+@requires_auth
+def conteudo_dinamico(modulo_slug):
+    usuario = usuario_logado()
+    progresso = usuario.progresso
+    
+    # 1. Encontra a configuração do módulo
+    modulo_config = MODULO_BY_SLUG.get(modulo_slug)
+
+    if not modulo_config:
+        flash('Módulo de conteúdo não encontrado.', 'danger')
+        return redirect(url_for('modulos'))
+    
+    # 2. Verifica a dependência (lógica de desbloqueio)
+    dependency_field = modulo_config.get('dependency_field')
+    
+    # Se existe uma dependência, e ela não está concluída no DB
+    if dependency_field and not getattr(progresso, dependency_field, False):
+        # NOTA: Removi a informação do campo do DB da flash message, pois é técnica
+        flash(f'Você deve completar o módulo anterior primeiro.', 'warning')
         return redirect(url_for('modulos'))
         
-    else:
-        # 4. RETORNO OBRIGATÓRIO SE O SLUG FOR INVÁLIDO OU NÃO ENCONTRADO
-        flash('Erro: Módulo não encontrado.', 'danger')
-        return redirect(url_for('modulos'))
-
-@app.route('/conteudo-introducao')
-@requires_auth
-def conteudo_introducao(): 
-    # Módulo 1 não tem pré-requisito
-    return render_template('conteudo-introducao.html', user=usuario_logado(), progresso=usuario_logado().progresso)
-
-@app.route('/conteudo-decomposicao')
-@requires_auth
-def conteudo_decomposicao():
-    usuario = usuario_logado()
-    if not usuario.progresso.introducao_concluido:
-        flash('Você deve completar o módulo de Introdução primeiro.', 'warning')
-        return redirect(url_for('modulos'))
-    return render_template('conteudo-decomposicao.html', user=usuario, progresso=usuario.progresso)
-
-@app.route('/conteudo-rec-padrao')
-@requires_auth
-def conteudo_rec_padrao():
-    usuario = usuario_logado()
-    if not usuario.progresso.decomposicao_concluido:
-        flash('Você deve completar o módulo de Decomposição primeiro.', 'warning')
-        return redirect(url_for('modulos'))
-    return render_template('conteudo-rec-padrao.html', user=usuario, progresso=usuario.progresso)
-
-@app.route('/conteudo-abstracao')
-@requires_auth
-def conteudo_abstracao():
-    usuario = usuario_logado()
-    # Pré-requisito: Reconhecimento de Padrões (Módulo 3)
-    if not usuario.progresso.reconhecimento_padroes_concluido: 
-        flash('Você deve completar o módulo de Reconhecimento de Padrões primeiro.', 'warning')
-        return redirect(url_for('modulos'))
-    return render_template('conteudo-abstracao.html', user=usuario, progresso=usuario.progresso)
-
-@app.route('/conteudo-algoritmo')
-@requires_auth
-def conteudo_algoritmo():
-    usuario = usuario_logado()
-    # Pré-requisito: Abstração (Módulo 4)
-    if not usuario.progresso.abstracao_concluido: 
-        flash('Você deve completar o módulo de Abstração primeiro.', 'warning')
-        return redirect(url_for('modulos'))
-    return render_template('conteudo-algoritmo.html', user=usuario, progresso=usuario.progresso)
-
-@app.route('/conteudo-projeto-final')
-@requires_auth
-def conteudo_projeto_final():
-    usuario = usuario_logado()
-    # Pré-requisito: Algoritmos (Módulo 5)
-    if not usuario.progresso.algoritmo_concluido: 
-        flash('Você deve completar o módulo de Algoritmos primeiro.', 'warning')
-        return redirect(url_for('modulos'))
-    return render_template('conteudo-projeto-final.html', user=usuario, progresso=usuario.progresso)
+    # 3. Renderiza o template do módulo
+    template_name = modulo_config['template']
+    return render_template(template_name, user=usuario, progresso=progresso, modulo=modulo_config)
 
 # =========================================================
-# 8. EXECUÇÃO
+# 9. EXECUÇÃO
 # =========================================================
 
 if __name__ == '__main__':
