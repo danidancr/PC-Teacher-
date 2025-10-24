@@ -440,73 +440,65 @@ def gerar_certificado():
         headers={'Content-Disposition': f'attachment;filename=Certificado_{nome_completo.replace(" ", "_")}.tex'}
     )
 
-def generate_latex_certificate(nome_completo, data_conclusao):
-    """Gera o código LaTeX para o certificado."""
-    # Definição das cores para replicar o fundo escuro e a borda clara.
-    # Usando Noto Serif para dar um toque mais formal e acadêmico.
+def generate_latex_certificate(nome_completo, data_conclusao, carga_horaria):
+    """Gera o código LaTeX para o certificado, incluindo a carga horária dinâmica."""
+    
+    # O comando LaTeX \parbox pode ter problemas de parsing com o enter/quebra de linha do Python
+    # Vamos garantir que todo o bloco de texto está contido em uma única linha lógica no f-string,
+    # usando \n para quebra de linha no Python, mas mantendo o formato LaTeX correto.
+    
     return f"""
 \\documentclass[landscape, a4paper, 12pt]{{article}}
 
 % --- UNIVERSAL PREAMBLE BLOCK ---
-% Define geometria e margens
 \\usepackage[a4paper, top=1.5cm, bottom=1.5cm, left=1.5cm, right=1.5cm]{{geometry}}
 \\usepackage{{fontspec}}
-
-% Configuração de línguas e fontes (Português e Inglês)
 \\usepackage[portuguese, bidi=basic, provide=*]{{babel}}
 
 \\babelprovide[import, onchar=ids fonts]{{portuguese}}
-\\babelprovide[import, onchar=ids fonts]{{english}}
-
-% Define a fonte principal (serif)
 \\babelfont{{rm}}{{Noto Serif}}
-\\pagestyle{{empty}} % Remove números de página e cabeçalhos
+\\pagestyle{{empty}} 
 
-% Pacotes de estilo
+% Pacotes de estilo e cores
 \\usepackage{{xcolor}}
 \\usepackage{{parskip}}
 \\usepackage{{ragged2e}}
-\\usepackage{{tikz}} % Usado para desenhar o fundo e a borda
+\\usepackage{{tikz}}
 
-% Define cores para o esquema de design
-\\definecolor{{CorFundo}}{{HTML}}{{191923}} % Cor escura (quase preta)
-\\definecolor{{CorPrincipal}}{{HTML}}{{FFFFFF}} % Branco
-\\definecolor{{CorDestaque}}{{HTML}}{{F9D038}} % Amarelo Dourado
+\\definecolor{{CorFundo}}{{HTML}}{{191923}} 
+\\definecolor{{CorPrincipal}}{{HTML}}{{FFFFFF}} 
+\\definecolor{{CorDestaque}}{{HTML}}{{F9D038}} 
 
 % Comando para a linha de assinatura
 \\newcommand{{\\assinatura}}[2]{{
-    \\begin{{minipage}}[t]{{0.45\\textwidth}}
-        \\centering
-        \\vspace{{1cm}}
-        {{\\color{{CorDestaque}}\\rule{{\\linewidth}}{{0.5pt}}}} % Linha dourada
-        \\small{{\\color{{CorPrincipal}}\\textbf{{#1}}}} \\\\
-        \\tiny{{\\color{{CorPrincipal}}\\textit{{#2}}}}
-    \\end{{minipage}}
+    \\begin{{minipage}}[t]{{0.45\\textwidth}}
+        \\centering
+        \\vspace{{1cm}}
+        {{\\color{{CorDestaque}}\\rule{{\\linewidth}}{{0.5pt}}}}
+        \\small{{\\color{{CorPrincipal}}\\textbf{{#1}}}} \\\\
+        \\tiny{{\\color{{CorPrincipal}}\\textit{{#2}}}}
+    \\end{{minipage}}
 }}
 
 \\begin{{document}}
 \\begin{{tikzpicture}}[overlay, remember picture]
-    % Desenha o fundo preto/escuro que preenche toda a página
-    \\fill[fill=CorFundo] (current page.south west) rectangle (current page.north east);
-    
-    % Desenha a borda decorativa (retângulo mais interno, estilo moldura)
-    \\draw[color=CorPrincipal, line width=8pt]
-        ([xshift=5mm, yshift=5mm]current page.south west)
-        rectangle ([xshift=-5mm, yshift=-5mm]current page.north east);
+    \\fill[fill=CorFundo] (current page.south west) rectangle (current page.north east);
+    \\draw[color=CorPrincipal, line width=8pt]
+        ([xshift=5mm, yshift=5mm]current page.south west)
+        rectangle ([xshift=-5mm, yshift=-5mm]current page.north east);
 \\end{{tikzpicture}}
 
 \\begin{{center}}
-\\color{{CorPrincipal}} % Todo o texto será branco
+\\color{{CorPrincipal}}
 
 \\vspace*{{2cm}}
 
-% Título do Logo (Simulando o "PC Teacher" com cores)
-{{\\Huge\\textbf{PC} \\color{{CorDestaque}}\\textbf{TEACHER}}}
+% Onde o erro pode ter ocorrido, garantindo que o comando seja uma única string.
+{{\\Huge\\textbf{{PC}} \\color{{CorDestaque}}\\textbf{{TEACHER}}}}
 
 \\vspace{{1.5cm}}
 
-% Título Principal
-{{\\fontsize{{50pt}}{{60pt}}\\selectfont\\textbf{CERTIFICADO}}} 
+{{\\fontsize{{50pt}}{{60pt}}\\selectfont\\textbf{{CERTIFICADO}}}} 
 
 \\vspace{{1.5cm}}
 
@@ -519,10 +511,10 @@ def generate_latex_certificate(nome_completo, data_conclusao):
 
 \\vspace{{1.5cm}}
 
-% Conteúdo
+% Conteúdo com a carga horária dinâmica - Corrigido o formato de quebra de linha
 \\parbox{{0.8\\textwidth}}{{\\centering
-    concluiu com êxito o curso de \\textbf{{Pensamento Computacional}} realizado
-    na plataforma \\textbf{{PC Teacher}}, com carga horária total de \\textbf{{40 horas}}.
+    concluiu com êxito o curso de \\textbf{{Pensamento Computacional}} realizado
+    na plataforma \\textbf{{PC Teacher}}, com carga horária total de \\textbf{{{carga_horaria} horas}}.
 }}
 
 \\vspace{{1.5cm}}
@@ -543,8 +535,7 @@ def generate_latex_certificate(nome_completo, data_conclusao):
 
 
 # =========================================================
-# 7. ROTAS DE INFORMAÇÕES (Sem alterações)
-# ... (infor-curso-decomposicao, etc.)
+# =========================================================
 # =========================================================
 @app.route('/infor-curso-decomposicao')
 def infor_curso_decomposicao():
