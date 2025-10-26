@@ -52,7 +52,7 @@ elif not firebase_admin._apps:
 # Adicionado 'min_acertos_para_desbloqueio'
 MODULO_CONFIG = [
     {
-        'title': '1. Introdução ao Pensamento Computacional',
+        'title': 'Introdução ao Pensamento Computacional',
         'field': 'introducao_concluido', # Mantido para compatibilidade, mas o slug é a chave principal
         'slug': 'introducao',
         'template': 'conteudo-introducao.html', 
@@ -62,7 +62,7 @@ MODULO_CONFIG = [
         'min_acertos_para_desbloqueio': 3 # NOVO: Acertos mínimos para conclusão/desbloqueio
     },
     {
-        'title': '2. Decomposição',
+        'title': 'Decomposição',
         'field': 'decomposicao_concluido',
         'slug': 'decomposicao',
         'template': 'conteudo-decomposicao.html', 
@@ -72,7 +72,7 @@ MODULO_CONFIG = [
         'min_acertos_para_desbloqueio': 3
     },
     {
-        'title': '3. Reconhecimento de Padrões',
+        'title': 'Reconhecimento de Padrões',
         'field': 'reconhecimento_padroes_concluido',
         'slug': 'rec-padrao',
         'template': 'conteudo-rec-padrao.html', 
@@ -82,7 +82,7 @@ MODULO_CONFIG = [
         'min_acertos_para_desbloqueio': 3
     },
     {
-        'title': '4. Abstração',
+        'title': 'Abstração',
         'field': 'abstracao_concluido',
         'slug': 'abstracao',
         'template': 'conteudo-abstracao.html', 
@@ -92,7 +92,7 @@ MODULO_CONFIG = [
         'min_acertos_para_desbloqueio': 3
     },
     {
-        'title': '5. Algoritmos',
+        'title': 'Algoritmos',
         'field': 'algoritmo_concluido',
         'slug': 'algoritmo',
         'template': 'conteudo-algoritmo.html', 
@@ -102,7 +102,7 @@ MODULO_CONFIG = [
         'min_acertos_para_desbloqueio': 3
     },
     {
-        'title': '6. Projeto Final',
+        'title': 'Projeto Final',
         'field': 'projeto_final_concluido',
         'slug': 'projeto-final',
         'template': 'conteudo-projeto-final.html', 
