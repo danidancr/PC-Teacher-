@@ -474,32 +474,58 @@ def conteudo_dinamico(modulo_slug):
     return render_template(template_name, user=usuario, modulo=modulo_config, **extra_context)
 
 
-@app.route('/submeter-exercicio/<string:modulo_slug>', methods=['POST'])
+@app.route('/api/verificar_resposta', methods=['POST']) # ROTA CORRIGIDA para corresponder ao frontend
 @requires_auth
-def submeter_exercicio(modulo_slug):
+def verificar_resposta(): # Nome da função ajustado para clareza
     usuario = usuario_logado()
     user_id = usuario['id']
     progresso_ref = db.collection('progresso').document(user_id)
     progresso_db = usuario.get('progresso', {})
     
-    modulo_config = MODULO_BY_SLUG.get(modulo_slug)
-    
-    if not modulo_config or modulo_config['exercises'] == 0:
-        return jsonify({'success': False, 'message': 'Módulo não encontrado ou sem exercícios.'}), 404
-        
     if not request.is_json:
         return jsonify({'success': False, 'message': 'Requisição deve ser JSON.'}), 400
         
-    user_answer = request.get_json().get('resposta', '').strip()
+    data = request.get_json()
     
+    # O frontend envia 'id' (que é o question_id) e 'resposta'
+    question_id = data.get('id', '') # Ex: 'introducao-q1' ou 'q-mod0-1'
+    user_answer = data.get('resposta', '').strip()
+    
+    # Tente extrair o slug do question_id. Isso pressupõe que o question_id seja do tipo 'slug-qX'
+    # Você precisará ajustar essa lógica de extração se o seu question_id for diferente
+    # Exemplo: Se 'id' for 'introducao-q1', o slug é 'introducao'.
+    # Como a função check_answer precisa do slug, vamos criar uma simulação.
+    
+    # LOGICA IMPORTANTE: EXTRAIR O SLUG DO question_id para obter a config correta.
+    # Exemplo simples: assumindo que o slug é a primeira parte antes de um hífen.
+    parts = question_id.split('-')
+    modulo_slug = parts[0] if len(parts) > 1 and parts[0] in MODULO_BY_SLUG else question_id
+    
+    # Em um sistema real, você procuraria a questão no DB com base no question_id
+    # e, a partir dela, encontraria o slug e a resposta correta.
+    # Como não temos o DB de questões, vamos manter a lógica anterior de simulação:
+    
+    if modulo_slug not in MODULO_BY_SLUG:
+        return jsonify({'correta': False, 'explicacao': 'ID de questão inválido (módulo não encontrado).'}), 400
+    
+    modulo_config = MODULO_BY_SLUG.get(modulo_slug)
+
     # Verifica se o módulo já está concluído
     current_progress = progresso_db.get(modulo_slug, {'acertos': 0, 'erros': 0, 'concluido': False})
     if current_progress.get('concluido'):
-        return jsonify({'success': True, 'message': 'Módulo já concluído!', 'is_module_completed': True, 'new_acertos': current_progress['acertos'], 'new_erros': current_progress['erros']})
-
-    # --- 1. Corrige a Resposta e Prepara a Atualização ---
-    is_correct = check_answer(modulo_slug, user_answer) 
+        return jsonify({
+            'correta': False, 
+            'explicacao': 'Módulo já concluído. Resposta não registrada.', 
+            'novo_acertos': current_progress['acertos'], 
+            'novo_erros': current_progress['erros']
+        }), 200 # OK, mas não fez nada
     
+    # --- 1. Corrige a Resposta e Prepara a Atualização ---
+    is_correct = check_answer(modulo_slug, user_answer) # Usa a simulação de correção
+    
+    # Vamos simular uma explicação de feedback com base na correção
+    explanation_text = "Resposta correta! Ótima solução." if is_correct else "Resposta incorreta. Revise o conteúdo ou tente a próxima opção."
+
     acertos_path = f'{modulo_slug}.acertos'
     erros_path = f'{modulo_slug}.erros'
     concluido_path = f'{modulo_slug}.concluido'
@@ -514,52 +540,39 @@ def submeter_exercicio(modulo_slug):
         update_data[erros_path] = firestore.Increment(1)
 
     # --- 2. Simula o Status Pós-Incremento para Feedback ---
-    
     current_acertos = current_progress.get('acertos', 0)
     current_erros = current_progress.get('erros', 0)
     
     new_acertos_simulated = current_acertos + (1 if is_correct else 0)
     new_erros_simulated = current_erros + (1 if not is_correct else 0)
 
-    min_acertos = modulo_config.get('min_acertos_para_desbloqueio', 3) 
+    min_acertos = modulo_config.get('min_acertos_para_desbloqueio', 3)  # Usando o valor padrão 3
     
     is_module_completed = False
-    flash_message = ""
     
     if new_acertos_simulated >= min_acertos:
         # Marca o módulo como concluído no DB
         update_data[concluido_path] = True
         is_module_completed = True
-        flash_message = f'Parabéns! Você atingiu {min_acertos} acertos e concluiu o módulo "{modulo_config["title"]}". O próximo módulo foi desbloqueado.'
-    elif is_correct:
-         flash_message = f'Resposta correta! Faltam apenas {min_acertos - new_acertos_simulated} acertos para concluir o módulo.'
-    else:
-         flash_message = f'Resposta incorreta. Você tem {new_acertos_simulated} acerto(s) até agora. Mínimo: {min_acertos}.'
-
-
+        # Atualiza a explicação com a mensagem de conclusão
+        explanation_text = f"Parabéns! Você atingiu {min_acertos} acertos e concluiu o módulo! 🎉"
+    
     # --- 3. Commit e Retorno JSON ---
     try:
         progresso_ref.update(update_data)
         
-        # O Firestore.Increment é assíncrono, mas o resultado final é garantido.
-        # Retornamos os valores simulados para um feedback mais imediato, 
-        # ou forçamos um 'get' (o que é custoso) para ter o valor real.
-        # Para fins práticos e de desempenho, usaremos os valores simulados no feedback.
+        # Retorna o JSON no formato que o frontend espera
         return jsonify({
-            'success': True,
-            'message': flash_message,
-            'is_correct': is_correct,
-            # Retorna o valor *após* a submissão (simulado)
-            'new_acertos': new_acertos_simulated, 
-            'new_erros': new_erros_simulated,     
-            'is_module_completed': is_module_completed,
-            'min_acertos': min_acertos
-        })
+            'correta': is_correct,
+            'explicacao': explanation_text,
+            'novo_acertos': new_acertos_simulated,  
+            'novo_erros': new_erros_simulated,      
+            'is_module_completed': is_module_completed
+        }), 200
 
     except Exception as e:
-        print(f"Erro ao salvar submissão do exercício {modulo_slug}: {e}") 
-        return jsonify({'success': False, 'message': f'Erro interno ao salvar no DB: {str(e)}'}), 500
-
+        print(f"Erro ao salvar submissão do exercício {modulo_slug}: {e}")  
+        return jsonify({'correta': False, 'explicacao': f'Erro interno do servidor ao salvar progresso: {str(e)}'}), 500
 
 @app.route('/salvar-projeto-modulo/<string:modulo_slug>', methods=['POST'])
 @requires_auth
