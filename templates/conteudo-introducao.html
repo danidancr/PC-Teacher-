@@ -211,7 +211,7 @@
 
 {% block finish_button %}
     <div class="mt-8 text-center">
-                {% if progresso_modulo.concluido %}
+                {% if progresso_modulo.concluido %}
                 <a href="{{ url_for('modulos') }}" class="btn-finish hover:shadow-lg inline-flex items-center">
             <i class="fas fa-check-double mr-2"></i>Módulo Concluído! Ir para o Próximo.
         </a>
@@ -281,7 +281,7 @@
 
     // Função PRINCIPAL para submeter a resposta do exercício via fetch
     function submitExercise(questionId, selectedAnswer, element) {
-        // Verifica se a questão já foi respondida (se o onclick foi removido)
+        // Verifica se a questão já foi respondida
         if (!element.onclick) {
             return;
         }
@@ -289,10 +289,10 @@
         const feedbackDiv = document.getElementById(`feedback-${questionId}`);
         const block = element.closest('.exercise-block');
 
-        // Desabilitar todas as opções de resposta para esta questão
+        // Temporariamente desabilita todas as opções para evitar cliques duplos durante o fetch
         const options = block.querySelectorAll('.quiz-option');
         options.forEach(opt => {
-            opt.onclick = null; // Desabilita o clique para evitar múltiplas submissões
+            opt.onclick = null;
             opt.classList.add('pointer-events-none');
         });
 
@@ -319,17 +319,49 @@
         .then(data => {
             let message = '';
             
+            // Aplica as cores padrão a todas as opções primeiro (para "resetar" as tentativas anteriores)
+            options.forEach(opt => {
+                opt.classList.remove('bg-red-300', 'bg-green-300', 'bg-red-100', 'bg-green-100');
+                if (!opt.classList.contains('bg-gray-100')) {
+                    opt.classList.add('bg-gray-100');
+                }
+            });
+
+
             // Verifica o status de acerto
             if (data.is_correct) {
                 message = `✅ Correto! Você somou 1 acerto.`;
                 feedbackDiv.className = `feedback-message mt-4 p-2 rounded bg-green-100 text-green-700`;
-                element.classList.remove('bg-gray-100', 'hover:bg-gray-200');
-                element.classList.add('bg-green-300');
+                // Pinta a opção correta de verde mais escuro e remove o hover/cursor
+                element.classList.remove('bg-gray-100', 'hover:bg-gray-200', 'cursor-pointer');
+                element.classList.add('bg-green-300', 'font-bold');
+                
+                // **BLOQUEIA TODAS AS OPÇÕES** (A questão está finalizada)
+                options.forEach(opt => {
+                    opt.onclick = null;
+                    opt.classList.add('pointer-events-none');
+                    opt.classList.remove('cursor-pointer', 'hover:bg-gray-200');
+                });
             } else {
-                message = `❌ Incorreto. Tente novamente, mas esta resposta já foi marcada como errada.`;
+                message = `❌ Incorreto. Tente outra alternativa.`;
                 feedbackDiv.className = `feedback-message mt-4 p-2 rounded bg-red-100 text-red-700`;
-                element.classList.remove('bg-gray-100', 'hover:bg-gray-200');
-                element.classList.add('bg-red-300');
+                // Pinta a opção incorreta de vermelho e remove o hover/cursor dela
+                element.classList.remove('bg-gray-100', 'hover:bg-gray-200', 'cursor-pointer');
+                element.classList.add('bg-red-100', 'text-red-700', 'border-red-300'); // Fica mais leve para que as outras opções se destaquem
+                
+                // **REABILITA AS OPÇÕES NÃO-CLICADAS**
+                options.forEach(opt => {
+                    // Se a opção não é a que acabou de ser clicada (e marcada como incorreta)
+                    if (opt !== element) {
+                        const answerLetter = opt.getAttribute('data-answer');
+                        // Verifica se a opção já foi clicada antes (ela terá o estilo de erro)
+                        if (!opt.classList.contains('text-red-700')) {
+                            // Reativa apenas se ainda não foi marcada como incorreta
+                            opt.onclick = () => submitExercise(questionId, answerLetter, opt);
+                            opt.classList.remove('pointer-events-none');
+                        }
+                    }
+                });
             }
             
             // Atualiza o progresso global (Acertos / Erros) e o botão
@@ -337,25 +369,14 @@
             
             // Exibe o feedback específico da questão
             feedbackDiv.innerHTML = message;
-            
-            // Se for incorreto, o usuário ainda pode tentar outra opção
-            if (!data.is_correct) {
-                options.forEach(opt => {
-                    // Reativa a opção se for diferente da que foi clicada
-                    if (opt !== element) {
-                        const answerLetter = opt.getAttribute('data-answer');
-                        opt.onclick = () => submitExercise(questionId, answerLetter, opt);
-                        opt.classList.remove('pointer-events-none');
-                    }
-                });
-            }
 
         })
         .catch(error => {
             console.error('Erro na submissão do exercício:', error);
             feedbackDiv.innerHTML = 'Erro de comunicação. Tente novamente.';
             feedbackDiv.className = `feedback-message mt-4 p-2 rounded bg-red-100 text-red-700`;
-            // Reabilita as opções em caso de erro de rede
+            
+            // Reabilita TODAS as opções em caso de erro de rede para permitir tentar novamente
             options.forEach(opt => {
                 const answerLetter = opt.getAttribute('data-answer');
                 opt.onclick = () => submitExercise(questionId, answerLetter, opt);
