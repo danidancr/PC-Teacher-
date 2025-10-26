@@ -223,11 +223,19 @@
     </div>
 {% endblock %}
 
-{% block custom_scripts %}
+{% block scripts %}
 <script>
-// Função para atualizar o progresso na interface (caso o backend retorne)
+// =================================================================
+// FUNÇÕES DE EXERCÍCIO (MOVIDAS PARA CÁ PARA CORRIGIR O ERRO: Uncaught ReferenceError)
+// =================================================================
+
+// Função para atualizar o progresso na interface
 function updateProgress(acertos, erros) {
-    const minAcertos = parseInt({{ MIN_ACERTOS }}); // Obtém o valor de MIN_ACERTOS de Jinja
+    // Note: Usamos o MIN_ACERTOS de Jinja no HTML. Aqui, precisamos do valor.
+    const minAcertosElement = document.getElementById('currentAcertos').nextSibling;
+    // Tenta extrair o número de acertos necessários do DOM, se o método com Jinja não for suficiente.
+    let minAcertos = parseInt({{ MIN_ACERTOS }}); // Obtém o valor de MIN_ACERTOS de Jinja
+    
     document.getElementById('currentAcertos').textContent = acertos;
     document.getElementById('acertosCount').textContent = acertos;
     document.getElementById('errosCount').textContent = erros;
@@ -243,7 +251,7 @@ function submitExercise(questionId, selectedAnswer, element) {
     const feedbackDiv = document.getElementById(`feedback-${questionId}`);
     const block = element.closest('.exercise-block');
     
-    // **AQUI ESTAVA O ERRO PRINCIPAL DE SELETOR QUE CORRIGIMOS:**
+    // CORREÇÃO: Certifica-se de que estamos buscando as opções dentro do bloco da pergunta
     const options = block.querySelectorAll('.quiz-option'); 
 
     // Desabilita todas as opções da pergunta para evitar novos cliques durante a requisição
@@ -300,6 +308,9 @@ function submitExercise(questionId, selectedAnswer, element) {
                     opt.classList.add('hover:bg-gray-200');
                     opt.classList.remove('ring-4', 'ring-primary-indigo', 'ring-opacity-50');
                     opt.style.opacity = '1';
+                } else {
+                    // Mantém a opção errada desabilitada visualmente
+                    opt.onclick = null;
                 }
             });
             
@@ -327,37 +338,36 @@ function submitExercise(questionId, selectedAnswer, element) {
         });
     });
 }
-</script>
-{% endblock %}
 
-{% block scripts %}
-<script>
+// =================================================================
+// FUNÇÕES DE COMENTÁRIOS E OUTROS SCRIPTS (ORIGINAIS)
+// =================================================================
 function toggleComments(questionId) {
-    const section = document.getElementById(`comments-${questionId}`);
-    section.classList.toggle('hidden');
+    const section = document.getElementById(`comments-${questionId}`);
+    section.classList.toggle('hidden');
 }
 
 function submitComment(questionId) {
-    const input = document.getElementById(`comment-input-${questionId}`);
-    const list = document.getElementById(`comment-list-${questionId}`);
-    const comment = input.value.trim();
+    const input = document.getElementById(`comment-input-${questionId}`);
+    const list = document.getElementById(`comment-list-${questionId}`);
+    const comment = input.value.trim();
 
-    if (!comment) return;
+    if (!comment) return;
 
-    fetch('/api/comentarios', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: questionId, comentario: comment })
-    })
-    .then(response => response.json())
-    .then(data => {
-        const div = document.createElement('div');
-        div.className = 'bg-white p-2 rounded-lg shadow';
-        div.textContent = comment;
-        list.prepend(div);
-        input.value = '';
-    })
-    .catch(err => console.error('Erro ao enviar comentario:', err));
+    fetch('/api/comentarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: questionId, comentario: comment })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const div = document.createElement('div');
+        div.className = 'bg-white p-2 rounded-lg shadow';
+        div.textContent = comment;
+        list.prepend(div);
+        input.value = '';
+    })
+    .catch(err => console.error('Erro ao enviar comentario:', err));
 }
 </script>
 {% endblock %}
