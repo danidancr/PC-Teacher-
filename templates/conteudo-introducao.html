@@ -225,69 +225,73 @@
 
 {% block custom_scripts %}
 <script>
+// Função para atualizar o progresso na interface (caso o backend retorne)
+function updateProgress(acertos, erros) {
+    const minAcertos = parseInt({{ MIN_ACERTOS }}); // Obtém o valor de MIN_ACERTOS de Jinja
+    document.getElementById('currentAcertos').textContent = acertos;
+    document.getElementById('acertosCount').textContent = acertos;
+    document.getElementById('errosCount').textContent = erros;
+    
+    const finishButton = document.querySelector('.btn-finish-disabled');
+    if (finishButton) {
+        finishButton.innerHTML = `<i class="fas fa-lock mr-2"></i> Próximo Módulo (Requer ${acertos} / ${minAcertos} acertos)`;
+    }
+}
+
+
 function submitExercise(questionId, selectedAnswer, element) {
-    // Busca a div de feedback e o bloco de exercício
     const feedbackDiv = document.getElementById(`feedback-${questionId}`);
     const block = element.closest('.exercise-block');
+    
+    // **AQUI ESTAVA O ERRO PRINCIPAL DE SELETOR QUE CORRIGIMOS:**
+    const options = block.querySelectorAll('.quiz-option'); 
 
-    // **[CORREÇÃO 1]: O seletor estava errado.**
-    // Era: const options = block.querySelectorAll('.option');
-    // Agora: busca todos os elementos com a classe .quiz-option dentro do bloco da pergunta.
-    const options = block.querySelectorAll('.quiz-option');
-
-    // Desabilita todas as opções desta pergunta Imediatamente após o clique
-    // para evitar cliques duplicados durante a requisição.
+    // Desabilita todas as opções da pergunta para evitar novos cliques durante a requisição
     options.forEach(opt => {
-        // Remove o evento de clique.
-        opt.onclick = null;
-        // Adiciona classe para remover o cursor e o hover
-        opt.classList.add('pointer-events-none'); 
-        opt.classList.remove('hover:bg-gray-200'); // Remove o efeito hover
+        opt.onclick = null; // Remove o evento de clique
+        opt.classList.add('pointer-events-none');
+        opt.classList.remove('hover:bg-gray-200'); // Remove o efeito visual de hover
+        opt.style.opacity = '0.7'; // Adiciona um estilo visual de desabilitado
     });
     
-    // Indica que a opção foi selecionada visualmente
+    // Indica que a opção foi selecionada (feedback visual)
     element.classList.add('ring-4', 'ring-primary-indigo', 'ring-opacity-50');
 
-    // Inicia a requisição
     fetch('/api/verificar_resposta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: questionId, resposta: selectedAnswer })
     })
     .then(response => {
-        // Verifica se a resposta HTTP é OK (status 200-299)
         if (!response.ok) {
-            throw new Error(`Erro de rede ou servidor: ${response.status}`);
+            throw new Error(`Erro de rede: ${response.status}`);
         }
         return response.json();
     })
     .then(data => {
-        // Atualiza a interface com o resultado
         feedbackDiv.classList.remove('hidden');
         
         if (data.correta) {
-            feedbackDiv.textContent = '✅ Correto! Boa!';
+            feedbackDiv.textContent = '✅ Correto! 🎉';
             feedbackDiv.className = 'feedback-message mt-4 p-3 rounded bg-green-100 text-green-700 font-medium';
-            element.classList.add('bg-green-200'); // Destaca a opção correta selecionada
-            
-            // **Atualização do Progresso (Opcional, se o backend retornar)**
-            if (data.novo_acertos && data.min_acertos) {
-                document.getElementById('currentAcertos').textContent = data.novo_acertos;
-                document.getElementById('acertosCount').textContent = data.novo_acertos;
-                if (data.novo_erros) {
-                    document.getElementById('errosCount').textContent = data.novo_erros;
-                }
+            element.classList.add('bg-green-200', 'border-green-500'); 
+            element.style.opacity = '1';
+
+            // Atualiza o progresso no topo da página
+            if (data.novo_acertos !== undefined && data.novo_erros !== undefined) {
+                 updateProgress(data.novo_acertos, data.novo_erros);
             }
+            
+            // Se acertou, a pergunta está resolvida. Nenhuma opção é reabilitada.
 
         } else {
             feedbackDiv.textContent = `❌ Errado. ${data.explicacao || 'Revise o conteúdo e tente as outras opções.'}`;
             feedbackDiv.className = 'feedback-message mt-4 p-3 rounded bg-red-100 text-red-700 font-medium';
-            element.classList.add('bg-red-200'); // Destaca a opção incorreta selecionada
+            element.classList.add('bg-red-200', 'border-red-500'); 
             
-            // Se errou, desabilita a opção clicada, mas reabilita as outras para tentar novamente.
+            // Se errou, reabilita as opções restantes, exceto a que foi clicada
             options.forEach(opt => {
-                // Reabilita as opções que não foram clicadas
-                if (opt !== element) {
+                if (opt.getAttribute('data-answer') !== selectedAnswer) {
                     opt.onclick = function() {
                         // Reatribui a função de clique
                         submitExercise(questionId, opt.getAttribute('data-answer'), opt);
@@ -295,20 +299,15 @@ function submitExercise(questionId, selectedAnswer, element) {
                     opt.classList.remove('pointer-events-none');
                     opt.classList.add('hover:bg-gray-200');
                     opt.classList.remove('ring-4', 'ring-primary-indigo', 'ring-opacity-50');
-                } else {
-                    // Mantém a opção errada permanentemente desabilitada
-                    opt.onclick = null;
+                    opt.style.opacity = '1';
                 }
             });
-
-            // Se errou, não podemos simplesmente terminar o finally, 
-            // já fizemos o que precisava no else.
-            return; 
+            
+            // Atualiza o progresso em caso de erro (se o backend retornar)
+             if (data.novo_acertos !== undefined && data.novo_erros !== undefined) {
+                 updateProgress(data.novo_acertos, data.novo_erros);
+            }
         }
-
-        // Se acertou, a pergunta está resolvida. Nenhuma opção pode ser clicada.
-        // O código de desabilitação inicial já cuidou disso.
-
     })
     .catch(error => {
         console.error('Erro ao verificar resposta:', error);
@@ -316,15 +315,15 @@ function submitExercise(questionId, selectedAnswer, element) {
         feedbackDiv.textContent = '⚠️ Ocorreu um erro de comunicação. Tente novamente.';
         feedbackDiv.className = 'feedback-message mt-4 p-3 rounded bg-yellow-100 text-yellow-700 font-medium';
         
-        // Em caso de erro, reabilita todas as opções para o usuário tentar de novo.
+        // Em caso de erro, reabilita TODAS as opções para nova tentativa
         options.forEach(opt => {
-            opt.onclick = function() {
-                // Reatribui a função de clique
+             opt.onclick = function() {
                 submitExercise(questionId, opt.getAttribute('data-answer'), opt);
             };
             opt.classList.remove('pointer-events-none');
             opt.classList.add('hover:bg-gray-200');
             opt.classList.remove('ring-4', 'ring-primary-indigo', 'ring-opacity-50');
+            opt.style.opacity = '1';
         });
     });
 }
