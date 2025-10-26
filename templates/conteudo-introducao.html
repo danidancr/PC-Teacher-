@@ -225,376 +225,77 @@
 
 {% block custom_scripts %}
 <script>
-    // Variáveis globais obtidas do Jinja
-    const MODULO_SLUG = '{{ MODULO_SLUG }}';
-    // Usando a variável passada pelo Flask, mais robusto
-    const MIN_ACERTOS = {{ modulo.min_acertos_para_desbloqueio }};
+function submitExercise(questionId, selectedAnswer, element) {
+    const feedbackDiv = document.getElementById(`feedback-${questionId}`);
+    const block = element.closest('.exercise-block');
 
-    // Referências aos elementos de progresso
-    const currentAcertosSpan = document.getElementById('currentAcertos');
-    const acertosCountSpan = document.getElementById('acertosCount');
-    const errosCountSpan = document.getElementById('errosCount');
-    const globalFeedbackDiv = document.getElementById('globalFeedback');
-    const finishButtonContainer = document.querySelector('.mt-8.text-center');
+    // (1) Removido o if problemático
+    // if (!element.onclick) {
+    //     return;
+    // }
 
-    // Mapeamento de feedback para cor de Tailwind CSS
-    const feedbackClasses = {
-        'success': 'bg-green-500',
-        'warning': 'bg-yellow-500',
-        'error': 'bg-red-500',
-        'info': 'bg-blue-500'
-    };
+    const options = block.querySelectorAll('.option');
+    options.forEach(opt => {
+        opt.onclick = null;
+        opt.classList.add('pointer-events-none');
+    });
 
-    // Função para atualizar os contadores e o botão no topo da página
-    function updateProgressUI(newAcertos, newErros, isCompleted) {
-        currentAcertosSpan.textContent = newAcertos;
-        acertosCountSpan.textContent = newAcertos;
-        errosCountSpan.textContent = newErros;
-
-        // Atualiza o botão de conclusão do módulo
-        if (isCompleted) {
-            // Usa a rota 'modulos' para retornar ao painel principal
-            finishButtonContainer.innerHTML = `
-                <a href="/modulos" class="btn-finish hover:shadow-lg inline-flex items-center">
-                    <i class="fas fa-check-double mr-2"></i>Módulo Concluído! Ir para o Próximo.
-                </a>
-            `;
-            showGlobalFeedback('Parabéns! Você concluiu o módulo e desbloqueou o próximo.', 'success');
-        } else {
-            // Se não está completo, garante que o botão esteja bloqueado e com a contagem correta
-            finishButtonContainer.innerHTML = `
-                <button type="button" class="btn-finish-disabled bg-gray-400 text-gray-100 cursor-not-allowed">
-                    <i class="fas fa-lock mr-2"></i> Próximo Módulo (Requer ${newAcertos} / ${MIN_ACERTOS} acertos)
-                </button>
-            `;
-        }
-    }
-
-    // Função para exibir mensagem global de feedback (sucesso/erro)
-    function showGlobalFeedback(message, type) {
-        globalFeedbackDiv.textContent = message;
-        globalFeedbackDiv.className = `mt-3 p-2 rounded text-white font-medium ${feedbackClasses[type] || feedbackClasses['info']}`;
-        globalFeedbackDiv.style.display = 'block';
-        // Opcional: esconder a mensagem após X segundos
-        setTimeout(() => { globalFeedbackDiv.style.display = 'none'; }, 8000);
-    }
-
-    // Função PRINCIPAL para submeter a resposta do exercício via fetch
-    function submitExercise(questionId, selectedAnswer, element) {
-        // Verifica se a questão já foi respondida
-        if (!element.onclick) {
-            return;
-        }
-        
-        const feedbackDiv = document.getElementById(`feedback-${questionId}`);
-        const block = element.closest('.exercise-block');
-
-        // Temporariamente desabilita todas as opções para evitar cliques duplos durante o fetch
-        const options = block.querySelectorAll('.quiz-option');
-        options.forEach(opt => {
-            opt.onclick = null;
-            opt.classList.add('pointer-events-none');
-        });
-
-        // Adiciona um indicador de "processando"
-        feedbackDiv.className = `feedback-message mt-4 p-2 rounded bg-blue-100 text-blue-700`;
-        feedbackDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Verificando...';
-        feedbackDiv.style.display = 'block';
-        
-        const url = `/submeter-exercicio/${MODULO_SLUG}`;
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            // O valor da resposta que o backend espera (simulação de correção)
-            body: JSON.stringify({ 
-                question_id: questionId,
-                // Manda 'certo' se a resposta tiver data-correct="true", senão envia a letra
-                resposta: element.getAttribute('data-correct') === 'true' ? 'certo' : selectedAnswer,
-            }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            let message = '';
-            
-            // Aplica as cores padrão a todas as opções primeiro (para "resetar" as tentativas anteriores)
-            options.forEach(opt => {
-                opt.classList.remove('bg-red-300', 'bg-green-300', 'bg-red-100', 'bg-green-100');
-                if (!opt.classList.contains('bg-gray-100')) {
-                    opt.classList.add('bg-gray-100');
-                }
-            });
-
-
-            // Verifica o status de acerto
-            if (data.is_correct) {
-                message = `✅ Correto! Você somou 1 acerto.`;
-                feedbackDiv.className = `feedback-message mt-4 p-2 rounded bg-green-100 text-green-700`;
-                // Pinta a opção correta de verde mais escuro e remove o hover/cursor
-                element.classList.remove('bg-gray-100', 'hover:bg-gray-200', 'cursor-pointer');
-                element.classList.add('bg-green-300', 'font-bold');
-                
-                // **BLOQUEIA TODAS AS OPÇÕES** (A questão está finalizada)
-                options.forEach(opt => {
-                    opt.onclick = null;
-                    opt.classList.add('pointer-events-none');
-                    opt.classList.remove('cursor-pointer', 'hover:bg-gray-200');
-                });
-            } else {
-                message = `❌ Incorreto. Tente outra alternativa.`;
-                feedbackDiv.className = `feedback-message mt-4 p-2 rounded bg-red-100 text-red-700`;
-                // Pinta a opção incorreta de vermelho e remove o hover/cursor dela
-                element.classList.remove('bg-gray-100', 'hover:bg-gray-200', 'cursor-pointer');
-                element.classList.add('bg-red-100', 'text-red-700', 'border-red-300'); // Fica mais leve para que as outras opções se destaquem
-                
-                // **REABILITA AS OPÇÕES NÃO-CLICADAS**
-                options.forEach(opt => {
-                    // Se a opção não é a que acabou de ser clicada (e marcada como incorreta)
-                    if (opt !== element) {
-                        const answerLetter = opt.getAttribute('data-answer');
-                        // Verifica se a opção já foi clicada antes (ela terá o estilo de erro)
-                        if (!opt.classList.contains('text-red-700')) {
-                            // Reativa apenas se ainda não foi marcada como incorreta
-                            opt.onclick = () => submitExercise(questionId, answerLetter, opt);
-                            opt.classList.remove('pointer-events-none');
-                        }
-                    }
-                });
-            }
-            
-            // Atualiza o progresso global (Acertos / Erros) e o botão
-            updateProgressUI(data.new_acertos, data.new_erros, data.is_module_completed);
-            
-            // Exibe o feedback específico da questão
-            feedbackDiv.innerHTML = message;
-
-        })
-        .catch(error => {
-            console.error('Erro na submissão do exercício:', error);
-            feedbackDiv.innerHTML = 'Erro de comunicação. Tente novamente.';
-            feedbackDiv.className = `feedback-message mt-4 p-2 rounded bg-red-100 text-red-700`;
-            
-            // Reabilita TODAS as opções em caso de erro de rede para permitir tentar novamente
-            options.forEach(opt => {
-                const answerLetter = opt.getAttribute('data-answer');
-                opt.onclick = () => submitExercise(questionId, answerLetter, opt);
-                opt.classList.remove('pointer-events-none');
-            });
-        });
-    }
-
-    // Função para submeter a ideia de projeto via fetch
-    function handleProjectIdeaSubmission(event, moduloSlug) {
-        event.preventDefault();
-        
-        const ideaInput = document.getElementById('project_idea_0');
-        const submitBtn = document.getElementById('projectSubmitBtn');
-        const feedbackDiv = document.getElementById('projectFeedback');
-        
-        const idea = ideaInput.value.trim();
-        
-        if (!idea) {
-            feedbackDiv.innerHTML = 'Por favor, escreva sua ideia antes de salvar.';
-            feedbackDiv.className = 'mt-2 p-2 rounded bg-red-100 text-red-700';
-            feedbackDiv.style.display = 'block';
-            return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Salvando...';
-
-        const url = `/salvar-projeto-modulo/${moduloSlug}`;
-        
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                // A rota Flask espera 'conteudo_resposta'
-                conteudo_resposta: idea,
-                campo: MODULO_SLUG // O campo no DB é 'introducao'
-            }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Salvar Ideia';
-
-            feedbackDiv.innerHTML = data.message;
-            feedbackDiv.className = `mt-2 p-2 rounded ${data.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
-            feedbackDiv.style.display = 'block';
-            
-            // Opcional: esconder a mensagem após X segundos
-            setTimeout(() => { feedbackDiv.style.display = 'none'; }, 5000);
-        })
-        .catch(error => {
-            console.error('Erro ao salvar ideia:', error);
-            feedbackDiv.innerHTML = 'Erro de comunicação ao salvar a ideia. Tente novamente.';
-            feedbackDiv.className = 'mt-2 p-2 rounded bg-red-100 text-red-700';
-            feedbackDiv.style.display = 'block';
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Salvar Ideia';
-        });
-    }
-
+    fetch('/api/verificar_resposta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: questionId, resposta: selectedAnswer })
+    })
+    .then(response => response.json())
+    .then(data => {
+        feedbackDiv.classList.remove('hidden');
+        feedbackDiv.textContent = data.correta ? '✅ Correto!' : `❌ Errado. ${data.explicacao}`;
+        feedbackDiv.classList.toggle('text-green-600', data.correta);
+        feedbackDiv.classList.toggle('text-red-600', !data.correta);
+    })
+    .catch(error => {
+        console.error('Erro ao verificar resposta:', error);
+        feedbackDiv.classList.remove('hidden');
+        feedbackDiv.textContent = '⚠️ Ocorreu um erro. Tente novamente.';
+        feedbackDiv.classList.add('text-yellow-600');
+    })
+    .finally(() => {
+        // (2) Reativa as opções para evitar travamento
+        options.forEach(opt => {
+            opt.classList.remove('pointer-events-none');
+        });
+    });
+}
 </script>
-{% endblock custom_scripts %}
+{% endblock %}
 
 {% block scripts %}
 <script>
-    // Variáveis globais de progresso (inicializadas pelo Jinja)
-    let acertosCount = parseInt(document.getElementById('acertosCount').innerText);
-    let errosCount = parseInt(document.getElementById('errosCount').innerText);
-    const minAcertos = {{ MIN_ACERTOS }}; // Variável do Jinja
+function toggleComments(questionId) {
+    const section = document.getElementById(`comments-${questionId}`);
+    section.classList.toggle('hidden');
+}
 
-    // Mapeamento de feedback (para o JS não precisar re-definir o texto do feedback)
-    const feedbackMap = {
-        'q-mod0-1': {
-            'A': { correct: true, message: '✅ Correto! O PC é uma forma de pensar, que utiliza o raciocínio recursivo e heurístico na resolução de problemas complexos, e não se limita a linguagens de programação ou a passos mecânicos.' },
-            'B': { correct: false, message: '❌ Incorreto. Essa alternativa reduz ou distorce o conceito; o PC é mais amplo e abrange habilidades aplicáveis além da programação, além de usar múltiplos níveis de abstração.' },
-            'C': { correct: false, message: '❌ Incorreto. O PC é um conjunto de habilidades de pensamento e não se resume à capacidade de seguir instruções de forma mecanizada.' },
-            'D': { correct: false, message: '❌ Incorreto. O PC é mais amplo do que o tratamento puramente matemático e é aplicado em diversos contextos, não apenas em questões isoladas.' },
-            'E': { correct: false, message: '❌ Incorreto. O PC é uma forma de pensar, e não envolve diretamente a utilização da forma binária de tratamento de dados pelo ser humano.' }
-        },
-        'q-mod0-2': {
-            'A': { correct: false, message: '❌ Incorreto. Embora úteis, estas são habilidades acadêmicas, não as ferramentas mentais centrais do Pensamento Computacional.' },
-            'B': { correct: true, message: '✅ Correto! A Abstração é um dos pilares de Wing, e a Reformulação do Problema (Decomposição) é o primeiro passo para o Pensamento Computacional.' },
-            'C': { correct: false, message: '❌ Incorreto. Estas são habilidades de desenvolvimento de software (codificação), não as ferramentas conceituais de pensamento.' },
-            'D': { correct: false, message: '❌ Incorreto. O PC abrange o pensamento matemático, mas é mais focado em decomposição, padrões e abstração.' },
-            'E': { correct: false, message: '❌ Incorreto. Topologia não é uma ferramenta central do Pensamento Computacional; os pilares são Decomposição, Reconhecimento de Padrões, Abstração e Algoritmos.' }
-        },
-        'q-mod0-3': {
-            'A': { correct: false, message: '❌ Incorreto. Isto é Reconhecimento de Padrões.' },
-            'B': { correct: false, message: '❌ Incorreto. Isto é Algoritmos.' },
-            'C': { correct: true, message: '✅ Correto! Decomposição é dividir o problema em sub-problemas menores.' },
-            'D': { correct: false, message: '❌ Incorreto. Isto é Abstração.' },
-            'E': { correct: false, message: '❌ Incorreto. Isso não faz parte dos pilares do PC.' }
-        },
-        // Adicione aqui os feedbacks para as perguntas q-mod0-4 e q-mod0-5, se quiser
-    };
+function submitComment(questionId) {
+    const input = document.getElementById(`comment-input-${questionId}`);
+    const list = document.getElementById(`comment-list-${questionId}`);
+    const comment = input.value.trim();
 
+    if (!comment) return;
 
-    function updateGlobalStatus(isCorrect) {
-        if (isCorrect) {
-            acertosCount += 1;
-        } else {
-            errosCount += 1;
-        }
-
-        // Atualiza a exibição no cabeçalho
-        document.getElementById('currentAcertos').innerText = acertosCount;
-        document.getElementById('acertosCount').innerText = acertosCount;
-        document.getElementById('errosCount').innerText = errosCount;
-
-        // Atualiza o feedback global
-        const globalFeedback = document.getElementById('globalFeedback');
-        globalFeedback.classList.remove('hidden', 'bg-red-500', 'bg-green-500');
-        globalFeedback.style.display = 'block';
-
-        if (acertosCount >= minAcertos) {
-            globalFeedback.classList.add('bg-green-500');
-            globalFeedback.innerText = 'Módulo 2 Desbloqueado! Você atingiu o mínimo de acertos.';
-            // Oculta o formulário do botão Próximo Módulo para forçar o backend a permitir o avanço
-            const finishButtonForm = document.getElementById('finish-module-form');
-            if (finishButtonForm) {
-                finishButtonForm.classList.remove('hidden');
-            }
-        } else {
-            globalFeedback.classList.add('bg-yellow-500');
-            globalFeedback.innerText = `Faltam ${minAcertos - acertosCount} acertos para desbloquear o Módulo 2.`;
-        }
-    }
-
-
-    /**
-     * Função para processar a submissão de um exercício de múltipla escolha.
-     * @param {string} questionId - O ID da pergunta (ex: 'q-mod0-1').
-     * @param {string} selectedAnswer - A letra da opção selecionada (ex: 'A', 'B').
-     * @param {HTMLElement} selectedElement - O elemento DIV da opção clicada.
-     */
-    function submitExercise(questionId, selectedAnswer, selectedElement) {
-        const questionBlock = document.getElementById(questionId);
-
-        // 1. Verificar se a pergunta já foi respondida (evita múltiplos cliques/contagens)
-        if (questionBlock.dataset.answered === 'true') {
-            console.log(`Questão ${questionId} já respondida.`);
-            return;
-        }
-        questionBlock.dataset.answered = 'true'; // Marca como respondida
-
-        // Pega o feedback e status de correção do mapa
-        const feedbackData = feedbackMap[questionId] ? feedbackMap[questionId][selectedAnswer] : null;
-        let isCorrect = false;
-        let message = 'Feedback não disponível.';
-
-        if (feedbackData) {
-            isCorrect = feedbackData.correct;
-            message = feedbackData.message;
-        } else {
-            // Tenta pegar a informação de correção diretamente do data-correct (se o mapa falhar)
-            isCorrect = selectedElement.dataset.correct === 'true';
-            message = isCorrect ? '✅ Correto!' : '❌ Incorreto.';
-        }
-
-
-        // 2. Lógica visual e Feedback no Frontend
-        const feedbackContainer = document.getElementById(`feedback-${questionId}`);
-        feedbackContainer.innerText = message;
-        feedbackContainer.classList.remove('hidden', 'bg-red-100', 'bg-green-100', 'text-red-700', 'text-green-700');
-
-        if (isCorrect) {
-            selectedElement.classList.add('bg-green-200', 'border-green-500', 'font-bold');
-            feedbackContainer.classList.add('bg-green-100', 'text-green-700');
-        } else {
-            selectedElement.classList.add('bg-red-200', 'border-red-500', 'font-bold');
-            feedbackContainer.classList.add('bg-red-100', 'text-red-700');
-
-            // Opcional: Destacar a resposta correta após o erro
-            const optionsContainer = document.getElementById(`options-${questionId}`);
-            Array.from(optionsContainer.children).forEach(option => {
-                if (option.dataset.correct === 'true') {
-                    option.classList.remove('bg-gray-100', 'hover:bg-gray-200');
-                    option.classList.add('bg-green-100', 'border-green-400', 'border-2');
-                }
-            });
-        }
-        
-        // 3. Desativa o clique em todas as opções da pergunta
-        const allOptions = questionBlock.querySelectorAll('.quiz-option');
-        allOptions.forEach(option => {
-            option.onclick = null; // Remove o evento de clique
-            option.classList.remove('cursor-pointer', 'hover:bg-gray-200');
-            option.classList.add('cursor-default');
-        });
-
-        // 4. Atualiza o progresso global (Frontend Simulado)
-        updateGlobalStatus(isCorrect);
-        
-        // *******************************************************************
-        // 5. Lógica de Backend (A SER IMPLEMENTADA COM FETCH/AJAX)
-        // Você precisará de uma função assíncrona para enviar o resultado
-        // para o seu servidor Flask/Django/etc. para a persistência no banco de dados.
-        // Exemplo:
-        // fetch('/api/submit_answer', {
-        //     method: 'POST',
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify({
-        //         modulo: '{{ MODULO_SLUG }}',
-        //         question_id: questionId,
-        //         answer: selectedAnswer,
-        //         is_correct: isCorrect
-        //     })
-        // })
-        // .then(response => response.json())
-        // .then(data => {
-        //     // Atualize o status com base na resposta do servidor se necessário
-        //     console.log('Resposta enviada ao servidor:', data);
-        // })
-        // .catch(error => console.error('Erro ao enviar resposta:', error));
-        // *******************************************************************
-    }
+    fetch('/api/comentarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: questionId, comentario: comment })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const div = document.createElement('div');
+        div.className = 'bg-white p-2 rounded-lg shadow';
+        div.textContent = comment;
+        list.prepend(div);
+        input.value = '';
+    })
+    .catch(err => console.error('Erro ao enviar comentario:', err));
+}
 </script>
 {% endblock %}
