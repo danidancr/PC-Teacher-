@@ -240,58 +240,12 @@
         </main>
     </div>
     
-    <script>
-        /**
-         * Verifica a resposta do quiz, aplica estilos e exibe o feedback.
-         * @param {string} questionId - ID da div que contém a pergunta (ex: 'q-mod0-1').
-         * @param {HTMLElement} selectedOption - O elemento de opção clicado.
-         * @param {string} isCorrectStr - 'true' ou 'false' indicando se a opção clicada é correta.
-         * @param {string} rationale - A explicação para a resposta.
-         */
-        function checkAnswer(questionId, selectedOption, isCorrectStr, rationale) {
-            const questionElement = document.getElementById(questionId);
-            const options = questionElement.querySelectorAll('.quiz-option');
-            const feedbackContainer = questionElement.querySelector('.feedback-message');
-            const isCorrect = isCorrectStr === 'true';
-
-            // 1. Desabilita todas as opções para evitar cliques duplicados
-            options.forEach(option => {
-                option.classList.add('pointer-events-none', 'opacity-80');
-                option.classList.remove('cursor-pointer', 'hover:bg-gray-100');
-            });
-            
-            // 2. Aplica o estilo de feedback
-            if (isCorrect) {
-                selectedOption.classList.add('bg-green-100', 'border-green-500', 'shadow-md');
-            } else {
-                selectedOption.classList.add('bg-red-100', 'border-red-500', 'shadow-md');
-                
-                // Destaca a resposta correta se a opção selecionada for incorreta
-                const correctAnswer = questionElement.querySelector('.quiz-option[data-correct="true"]');
-                if (correctAnswer) {
-                    // Remove o hover/fundo padrão e aplica o destaque verde
-                    correctAnswer.classList.remove('bg-gray-100', 'bg-red-100', 'opacity-80');
-                    correctAnswer.classList.add('bg-green-200', 'border-green-500', 'shadow-md');
-                }
-            }
-            
-            // 3. Exibe o feedback/racional
-            const icon = isCorrect ? '<i class="fas fa-check-circle mr-2"></i>' : '<i class="fas fa-times-circle mr-2"></i>';
-            const statusClass = isCorrect ? 'text-secondary-green border-green-500' : 'text-red-500 border-red-500';
-
-            feedbackContainer.innerHTML = `
-                <p class="font-semibold ${statusClass} flex items-center">
-                    ${icon} ${isCorrect ? 'Correto!' : 'Incorreto.'}
-                </p>
-                <p class="mt-2 text-gray-700">${rationale}</p>
-            `;
-            feedbackContainer.classList.remove('hidden');
-            feedbackContainer.classList.add('border-l-4', 'p-3', 'bg-white', 'shadow-inner');
-            
-            // 4. Rola para o feedback para garantir visibilidade em telas pequenas
-            feedbackContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-    </script>
+    {# ---------------------------------------------------- #}
+    {# REMOVIDA A FUNÇÃO 'checkAnswer' OBSOLETA #}
+    {# ADICIONADO UM NOVO BLOCO PARA SCRIPTS PERSONALIZADOS #}
+    {# As páginas filhas devem usar: {% block scripts %} ... {% endblock %} #}
+    {% block scripts %}{% endblock %}
+    {# ---------------------------------------------------- #}
     
 </body>
 </html>
