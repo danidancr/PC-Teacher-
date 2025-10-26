@@ -442,3 +442,159 @@
 
 </script>
 {% endblock custom_scripts %}
+
+{% block scripts %}
+<script>
+    // Variáveis globais de progresso (inicializadas pelo Jinja)
+    let acertosCount = parseInt(document.getElementById('acertosCount').innerText);
+    let errosCount = parseInt(document.getElementById('errosCount').innerText);
+    const minAcertos = {{ MIN_ACERTOS }}; // Variável do Jinja
+
+    // Mapeamento de feedback (para o JS não precisar re-definir o texto do feedback)
+    const feedbackMap = {
+        'q-mod0-1': {
+            'A': { correct: true, message: '✅ Correto! O PC é uma forma de pensar, que utiliza o raciocínio recursivo e heurístico na resolução de problemas complexos, e não se limita a linguagens de programação ou a passos mecânicos.' },
+            'B': { correct: false, message: '❌ Incorreto. Essa alternativa reduz ou distorce o conceito; o PC é mais amplo e abrange habilidades aplicáveis além da programação, além de usar múltiplos níveis de abstração.' },
+            'C': { correct: false, message: '❌ Incorreto. O PC é um conjunto de habilidades de pensamento e não se resume à capacidade de seguir instruções de forma mecanizada.' },
+            'D': { correct: false, message: '❌ Incorreto. O PC é mais amplo do que o tratamento puramente matemático e é aplicado em diversos contextos, não apenas em questões isoladas.' },
+            'E': { correct: false, message: '❌ Incorreto. O PC é uma forma de pensar, e não envolve diretamente a utilização da forma binária de tratamento de dados pelo ser humano.' }
+        },
+        'q-mod0-2': {
+            'A': { correct: false, message: '❌ Incorreto. Embora úteis, estas são habilidades acadêmicas, não as ferramentas mentais centrais do Pensamento Computacional.' },
+            'B': { correct: true, message: '✅ Correto! A Abstração é um dos pilares de Wing, e a Reformulação do Problema (Decomposição) é o primeiro passo para o Pensamento Computacional.' },
+            'C': { correct: false, message: '❌ Incorreto. Estas são habilidades de desenvolvimento de software (codificação), não as ferramentas conceituais de pensamento.' },
+            'D': { correct: false, message: '❌ Incorreto. O PC abrange o pensamento matemático, mas é mais focado em decomposição, padrões e abstração.' },
+            'E': { correct: false, message: '❌ Incorreto. Topologia não é uma ferramenta central do Pensamento Computacional; os pilares são Decomposição, Reconhecimento de Padrões, Abstração e Algoritmos.' }
+        },
+        'q-mod0-3': {
+            'A': { correct: false, message: '❌ Incorreto. Isto é Reconhecimento de Padrões.' },
+            'B': { correct: false, message: '❌ Incorreto. Isto é Algoritmos.' },
+            'C': { correct: true, message: '✅ Correto! Decomposição é dividir o problema em sub-problemas menores.' },
+            'D': { correct: false, message: '❌ Incorreto. Isto é Abstração.' },
+            'E': { correct: false, message: '❌ Incorreto. Isso não faz parte dos pilares do PC.' }
+        },
+        // Adicione aqui os feedbacks para as perguntas q-mod0-4 e q-mod0-5, se quiser
+    };
+
+
+    function updateGlobalStatus(isCorrect) {
+        if (isCorrect) {
+            acertosCount += 1;
+        } else {
+            errosCount += 1;
+        }
+
+        // Atualiza a exibição no cabeçalho
+        document.getElementById('currentAcertos').innerText = acertosCount;
+        document.getElementById('acertosCount').innerText = acertosCount;
+        document.getElementById('errosCount').innerText = errosCount;
+
+        // Atualiza o feedback global
+        const globalFeedback = document.getElementById('globalFeedback');
+        globalFeedback.classList.remove('hidden', 'bg-red-500', 'bg-green-500');
+        globalFeedback.style.display = 'block';
+
+        if (acertosCount >= minAcertos) {
+            globalFeedback.classList.add('bg-green-500');
+            globalFeedback.innerText = 'Módulo 2 Desbloqueado! Você atingiu o mínimo de acertos.';
+            // Oculta o formulário do botão Próximo Módulo para forçar o backend a permitir o avanço
+            const finishButtonForm = document.getElementById('finish-module-form');
+            if (finishButtonForm) {
+                finishButtonForm.classList.remove('hidden');
+            }
+        } else {
+            globalFeedback.classList.add('bg-yellow-500');
+            globalFeedback.innerText = `Faltam ${minAcertos - acertosCount} acertos para desbloquear o Módulo 2.`;
+        }
+    }
+
+
+    /**
+     * Função para processar a submissão de um exercício de múltipla escolha.
+     * @param {string} questionId - O ID da pergunta (ex: 'q-mod0-1').
+     * @param {string} selectedAnswer - A letra da opção selecionada (ex: 'A', 'B').
+     * @param {HTMLElement} selectedElement - O elemento DIV da opção clicada.
+     */
+    function submitExercise(questionId, selectedAnswer, selectedElement) {
+        const questionBlock = document.getElementById(questionId);
+
+        // 1. Verificar se a pergunta já foi respondida (evita múltiplos cliques/contagens)
+        if (questionBlock.dataset.answered === 'true') {
+            console.log(`Questão ${questionId} já respondida.`);
+            return;
+        }
+        questionBlock.dataset.answered = 'true'; // Marca como respondida
+
+        // Pega o feedback e status de correção do mapa
+        const feedbackData = feedbackMap[questionId] ? feedbackMap[questionId][selectedAnswer] : null;
+        let isCorrect = false;
+        let message = 'Feedback não disponível.';
+
+        if (feedbackData) {
+            isCorrect = feedbackData.correct;
+            message = feedbackData.message;
+        } else {
+            // Tenta pegar a informação de correção diretamente do data-correct (se o mapa falhar)
+            isCorrect = selectedElement.dataset.correct === 'true';
+            message = isCorrect ? '✅ Correto!' : '❌ Incorreto.';
+        }
+
+
+        // 2. Lógica visual e Feedback no Frontend
+        const feedbackContainer = document.getElementById(`feedback-${questionId}`);
+        feedbackContainer.innerText = message;
+        feedbackContainer.classList.remove('hidden', 'bg-red-100', 'bg-green-100', 'text-red-700', 'text-green-700');
+
+        if (isCorrect) {
+            selectedElement.classList.add('bg-green-200', 'border-green-500', 'font-bold');
+            feedbackContainer.classList.add('bg-green-100', 'text-green-700');
+        } else {
+            selectedElement.classList.add('bg-red-200', 'border-red-500', 'font-bold');
+            feedbackContainer.classList.add('bg-red-100', 'text-red-700');
+
+            // Opcional: Destacar a resposta correta após o erro
+            const optionsContainer = document.getElementById(`options-${questionId}`);
+            Array.from(optionsContainer.children).forEach(option => {
+                if (option.dataset.correct === 'true') {
+                    option.classList.remove('bg-gray-100', 'hover:bg-gray-200');
+                    option.classList.add('bg-green-100', 'border-green-400', 'border-2');
+                }
+            });
+        }
+        
+        // 3. Desativa o clique em todas as opções da pergunta
+        const allOptions = questionBlock.querySelectorAll('.quiz-option');
+        allOptions.forEach(option => {
+            option.onclick = null; // Remove o evento de clique
+            option.classList.remove('cursor-pointer', 'hover:bg-gray-200');
+            option.classList.add('cursor-default');
+        });
+
+        // 4. Atualiza o progresso global (Frontend Simulado)
+        updateGlobalStatus(isCorrect);
+        
+        // *******************************************************************
+        // 5. Lógica de Backend (A SER IMPLEMENTADA COM FETCH/AJAX)
+        // Você precisará de uma função assíncrona para enviar o resultado
+        // para o seu servidor Flask/Django/etc. para a persistência no banco de dados.
+        // Exemplo:
+        // fetch('/api/submit_answer', {
+        //     method: 'POST',
+        //     headers: { 'Content-Type': 'application/json' },
+        //     body: JSON.stringify({
+        //         modulo: '{{ MODULO_SLUG }}',
+        //         question_id: questionId,
+        //         answer: selectedAnswer,
+        //         is_correct: isCorrect
+        //     })
+        // })
+        // .then(response => response.json())
+        // .then(data => {
+        //     // Atualize o status com base na resposta do servidor se necessário
+        //     console.log('Resposta enviada ao servidor:', data);
+        // })
+        // .catch(error => console.error('Erro ao enviar resposta:', error));
+        // *******************************************************************
+    }
+</script>
+{% endblock %}
