@@ -10,13 +10,6 @@
     
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/progresso.css') }}"> 
-    
-    <style>
-        .module-progress-list .progress-item p {
-            font-size: 0.9em;
-            color: #6c757d;
-        }
-    </style>
 </head>
 <body>
 
@@ -57,6 +50,7 @@
                     <div class="metric-icon">
                         <i class="fas fa-medal"></i>
                     </div>
+                    <!-- Progresso Geral do Curso (Calculado no app.py) -->
                     <div class="metric-value">{{ progresso_data.overall_percent }}%</div>
                     <div class="metric-label">Conclusão do Curso "Pensamento Computacional" ({{ progresso_data.completed_modules }}/{{ progresso_data.total_modules }} Módulos)</div>
                 </div>
@@ -65,6 +59,7 @@
                     <div class="metric-icon" style="color: #FFC107;">
                         <i class="fas fa-graduation-cap"></i>
                     </div>
+                    <!-- Aulas Finalizadas (Calculado no app.py) -->
                     <div class="metric-value">{{ progresso_data.completed_lessons }}/{{ progresso_data.total_lessons }}</div>
                     <div class="metric-label">Aulas Finalizadas</div>
                 </div>
@@ -73,6 +68,7 @@
                     <div class="metric-icon" style="color: #3399FF;">
                         <i class="fas fa-puzzle-piece"></i>
                     </div>
+                    <!-- Exercícios Concluídos (Calculado no app.py) -->
                     <div class="metric-value">{{ progresso_data.completed_exercises }}/{{ progresso_data.total_exercises }}</div>
                     <div class="metric-label">Exercícios Concluídos</div>
                 </div>
@@ -95,15 +91,14 @@
                     {% set bar_color = '#4CAF50' %} {# Verde #}
                     {% set percent_text_color = '#333' %}
                 {% elif is_unlocked %}
-                    {# Exibe o percentual calculado de acertos, se disponível, senão 50% para em andamento #}
-                    {% set percent = (module.acertos / module.min_acertos * 100) if module.min_acertos > 0 and module.acertos is defined else 50 %}
+                    {% set percent = 50 %} {# Exibe 50% para "Em Andamento/Desbloqueado" #}
                     {% set status_class = 'status-pending' %}
-                    {% set status_text = 'Em Andamento' %}
+                    {% set status_text = 'Desbloqueado' %}
                     {% set bar_color = '#007BFF' %} {# Azul #}
                     {% set percent_text_color = '#333' %}
                 {% else %}
                     {% set percent = 0 %}
-                    {% set status_class = 'status-locked' %} 
+                    {% set status_class = 'status-locked' %} {# Corrigido para status-locked para melhor CSS #}
                     {% set status_text = 'Bloqueado' %}
                     {% set bar_color = '#E9ECEF' %} {# Cinza Claro #}
                     {% set percent_text_color = '#999' %}
@@ -112,23 +107,13 @@
                 <div class="progress-item">
                     <div class="item-info">
                         <h3>{{ module.title }}</h3>
-                        <p>
-                            <i class="fas fa-check-circle" style="color:#4CAF50;"></i> Acertos: <span style="font-weight:600;">{{ module.acertos }}</span> | 
-                            <i class="fas fa-times-circle" style="color:#FF5733;"></i> Erros: <span style="font-weight:600;">{{ module.erros }}</span> | 
-                            {{ module.lessons }} Aulas
-                        </p>
+                        <p>{{ module.lessons }} Aulas, {{ module.exercises }} Exercícios</p>
                     </div>
                     <div class="progress-bar-container">
                         <div class="progress-bar" style="width: {{ percent }}%; background-color: {{ bar_color }};"></div>
                     </div>
-                    <div class="progress-percentage" style="color: {{ percent_text_color }};">{{ percent | round(0) }}%</div>
-                    <div class="status-tag {{ status_class }}">
-                        {% if is_unlocked and not is_completed %}
-                            <i class="fas fa-exclamation-circle"></i> {{ module.acertos }}/{{ module.min_acertos }} Acertos
-                        {% else %}
-                            {{ status_text }}
-                        {% endif %}
-                    </div>
+                    <div class="progress-percentage" style="color: {{ percent_text_color }};">{{ percent }}%</div>
+                    <div class="status-tag {{ status_class }}">{{ status_text }}</div>
                 </div>
                 {% endfor %}
 
