@@ -1,20 +1,20 @@
 {% extends "conteudo-base.html" %}
 
-{% block title %}Módulo 4: Abstração{% endblock %}
+{% block title %}Módulo 1: Introdução ao PC{% endblock %}
 
-{% block content_title %}Módulo 4: Abstração - Foco no Essencial{% endblock %}
+{% block content_title %}Módulo 1: Introdução ao Pensamento Computacional{% endblock %}
 
 {% block content %}
     <!-- 1. Video Aula -->
     <div class="content-section">
         <h2 class="text-2xl font-semibold text-primary-indigo mb-4 flex items-center">
-            <i class="fas fa-video mr-3"></i> Vídeo Aula: Ignorando o Irrelevante
+            <i class="fas fa-video mr-3"></i> Vídeo Aula: O que é Pensamento Computacional?
         </h2>
         <div class="video-container">
             <!-- URL de Exemplo. Substitua por sua própria URL do YouTube! -->
             <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
         </div>
-        <p class="text-gray-500 mt-4">Aprenda a criar modelos mentais e representações, focando apenas nas características cruciais.</p>
+        <p class="text-gray-500 mt-4">Assista e descubra como o PC pode transformar sua prática pedagógica.</p>
     </div>
 
     <!-- 2. Material de Apoio -->
@@ -22,9 +22,9 @@
         <h2 class="text-2xl font-semibold text-primary-indigo mb-4 flex items-center">
             <i class="fas fa-file-alt mr-3"></i> Material de Apoio (PDF)
         </h2>
-        <p class="text-gray-700 mb-4">Ebook sobre como usar a abstração para desenvolver currículos modulares e focados.</p>
+        <p class="text-gray-700 mb-4">Baixe o nosso guia rápido para aprofundar os conceitos básicos deste módulo.</p>
         <a href="#" class="bg-secondary-green hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center transition duration-200">
-            <i class="fas fa-download mr-2"></i> Baixar Guia de Modelagem
+            <i class="fas fa-download mr-2"></i> Baixar Guia de Introdução
         </a>
     </div>
 
@@ -254,8 +254,9 @@
 {% endblock %}
 
 {% block finish_button %}
+    <!-- Botão de Finalização do Módulo -->
     <div class="mt-8 text-center">
-        <form method="POST" action="{{ url_for('concluir_modulo', modulo_nome='abstracao') }}">
+        <form method="POST" action="{{ url_for('concluir_modulo', modulo_nome='introducao') }}">
             <button type="submit" class="btn-finish hover:shadow-lg">
                 <i class="fas fa-check-double mr-2"></i>Próximo Módulo
             </button>
